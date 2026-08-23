@@ -6,6 +6,11 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Animated, Platform, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  PlayfairDisplay_600SemiBold,
+  PlayfairDisplay_700Bold,
+  useFonts,
+} from '@expo-google-fonts/playfair-display';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { SidePanel } from './src/components/SidePanel';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -344,6 +349,16 @@ function AppContent() {
 }
 
 export default function App() {
+  /* Rendering before the serif resolves would flash the whole app in the system
+     font, so hold the tree back one frame. `error` still lets us through —
+     typography.ts falls back to the platform serif rather than blocking boot. */
+  const [fontsLoaded, fontError] = useFonts({
+    PlayfairDisplay_600SemiBold,
+    PlayfairDisplay_700Bold,
+  });
+
+  if (!fontsLoaded && !fontError) return null;
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>

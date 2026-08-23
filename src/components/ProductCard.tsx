@@ -111,11 +111,6 @@ export function ProductCard({ productId, image, name, unit, price, mrp, stock, o
           ) : (
             <Text style={styles.emoji}>{image}</Text>
           )}
-          {discount ? (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>{discount}% OFF</Text>
-            </View>
-          ) : null}
           <Pressable style={styles.heartBtn} onPress={handleWishlist} hitSlop={8}>
             <Animated.Text style={[styles.heartIcon, { transform: [{ scale: heartScale }] }]}>
               {wishlisted ? '❤️' : '🤍'}

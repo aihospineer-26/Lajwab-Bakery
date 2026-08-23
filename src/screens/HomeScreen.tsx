@@ -32,7 +32,7 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
-const TRUST_BADGES = ['🌿 100% Eggless', '🍞 Baked Daily', '✅ Pure Veg', '📍 Janakpuri'];
+const TRUST_BADGES = ['100% Eggless', 'Baked Daily', 'Pure Veg', 'Janakpuri'];
 
 const BUNDLE = {
   name: "Tea-Time Combo",
@@ -46,8 +46,6 @@ export function HomeScreen({ navigation }: Props) {
   const columns = useGridColumns();
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
-  const [flashTime, setFlashTime] = useState({ m: 14, s: 23 });
-  const flashPulse = useRef(new Animated.Value(1)).current;
   const headerFade = useRef(new Animated.Value(0)).current;
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -56,24 +54,6 @@ export function HomeScreen({ navigation }: Props) {
   useEffect(() => {
     /* Fade in header content on mount */
     Animated.timing(headerFade, { toValue: 1, duration: 380, delay: 80, useNativeDriver: true }).start();
-  }, []);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setFlashTime(prev => {
-        let { m, s } = prev;
-        s--;
-        if (s < 0) { s = 59; m--; }
-        if (m < 0) { m = 14; s = 59; }
-        return { m, s };
-      });
-      /* Subtle scale pulse on each countdown tick */
-      Animated.sequence([
-        Animated.timing(flashPulse, { toValue: 1.07, duration: 75, useNativeDriver: true }),
-        Animated.timing(flashPulse, { toValue: 1, duration: 140, useNativeDriver: true }),
-      ]).start();
-    }, 1000);
-    return () => clearInterval(id);
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -119,9 +99,6 @@ export function HomeScreen({ navigation }: Props) {
     );
   }
 
-  const flashLabel =
-    `${String(flashTime.m).padStart(2, '0')}:${String(flashTime.s).padStart(2, '0')}`;
-
   const activeCatName = selectedCat
     ? categories.find(c => c.id === selectedCat)?.name ?? 'Products'
     : null;
@@ -157,33 +134,18 @@ export function HomeScreen({ navigation }: Props) {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <Animated.View style={{ opacity: headerFade }}>
-            {/* Trust badges */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.trustRow}
-            >
-              {TRUST_BADGES.map(badge => (
-                <View key={badge} style={styles.trustBadge}>
-                  <Text style={styles.trustBadgeText}>{badge}</Text>
-                </View>
+            {/* Values marquee — quiet, wide-tracked, no pill chrome */}
+            <View style={styles.valuesRow}>
+              {TRUST_BADGES.map((badge, i) => (
+                <React.Fragment key={badge}>
+                  {i > 0 ? <Text style={styles.valuesDot}>·</Text> : null}
+                  <Text style={styles.valuesText}>{badge}</Text>
+                </React.Fragment>
               ))}
-            </ScrollView>
+            </View>
 
             {!search ? (
               <>
-                {/* Flash Sale Card */}
-                <Pressable style={styles.flashCard} onPress={() => navigation.navigate('Offers')}>
-                  <View style={styles.flashCardContent}>
-                    <Text style={styles.flashEyebrow}>Flash Sale Ending in</Text>
-                    <Animated.Text style={[styles.flashCountdown, { transform: [{ scale: flashPulse }] }]}>
-                      {flashLabel}
-                    </Animated.Text>
-                    <Text style={styles.flashSub}>Up to 40% off · Tap to see all deals →</Text>
-                  </View>
-                  <Text style={styles.flashBolt}>⚡</Text>
-                </Pressable>
-
                 {/* Promo Banner */}
                 <View style={styles.bannerWrap}>
                   <PromoBanner />
@@ -210,7 +172,7 @@ export function HomeScreen({ navigation }: Props) {
                 </View>
 
                 {/* Category circles */}
-                <Text style={[typography.subheading, styles.catLabel]}>Categories</Text>
+                <Text style={[typography.overline, styles.catLabel]}>Shop Categories</Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -375,24 +337,24 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: spacing.lg,
       paddingBottom: 120,
     },
-    /* ── Trust badges ── */
-    trustRow: {
+    /* ── Values marquee ── */
+    valuesRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      alignItems: 'center',
       gap: spacing.sm,
-      paddingVertical: spacing.sm,
+      paddingTop: spacing.xl,
+      paddingBottom: spacing.lg,
     },
-    trustBadge: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: 5,
-      borderRadius: radius.full,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    trustBadgeText: {
-      fontSize: 11,
+    valuesText: {
+      fontSize: 10,
       fontWeight: '600',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
       color: colors.textMuted,
     },
+    valuesDot: { fontSize: 10, color: colors.border },
     /* ── Flash card ── */
     flashCard: {
       backgroundColor: '#FBBF24',
