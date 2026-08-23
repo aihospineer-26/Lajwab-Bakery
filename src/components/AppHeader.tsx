@@ -6,6 +6,7 @@ import { useLocation } from '../state/LocationContext';
 import { useSidePanel } from '../state/SidePanelContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 import { LocationPickerModal } from './LocationPickerModal';
 
 type AppHeaderProps = {
@@ -42,34 +43,36 @@ export function AppHeader({ title, onBack }: AppHeaderProps) {
     );
   }
 
+  /* Editorial masthead: centred wordmark with the icon rail flanking it, and
+     the "deliver to" line demoted to a quiet tracked caption underneath. */
   return (
     <View style={styles.container}>
       {title ? (
         <Text style={styles.titleText}>{title}</Text>
       ) : (
-        <Pressable onPress={() => setLocationOpen(true)} hitSlop={8} style={styles.locationWrap}>
-          <View style={styles.etaRow}>
-            <Text style={styles.etaFlash}>⚡</Text>
-            <Text style={styles.etaLabel}>Fresh delivery in </Text>
-            <Text style={styles.etaTime}>45 minutes</Text>
-          </View>
-          <View style={styles.locationRow}>
-            <Text style={styles.pinIcon}>📍</Text>
-            <Text style={styles.addressLabel} numberOfLines={1}>
-              {address.label} ▾
-            </Text>
-          </View>
-        </Pressable>
-      )}
+        <>
+          <View style={styles.mastheadRow}>
+            <Pressable style={styles.iconButton} onPress={handleDeliveryToggle} hitSlop={8}>
+              <MaterialCommunityIcons name="moped-outline" size={19} color={colors.primaryDark} />
+            </Pressable>
 
-      <View style={styles.right}>
-        <Pressable style={styles.iconButton} onPress={handleDeliveryToggle} hitSlop={8}>
-          <MaterialCommunityIcons name="moped-outline" size={20} color="#FFFFFF" />
-        </Pressable>
-        <Pressable style={styles.iconButton} onPress={open} hitSlop={8}>
-          <Text style={styles.menuIcon}>☰</Text>
-        </Pressable>
-      </View>
+            <View style={styles.wordmarkWrap}>
+              <Text style={styles.wordmark}>Lajwab</Text>
+              <Text style={styles.wordmarkSub}>Tasty & Healthy</Text>
+            </View>
+
+            <Pressable style={styles.iconButton} onPress={open} hitSlop={8}>
+              <Text style={styles.menuIcon}>☰</Text>
+            </Pressable>
+          </View>
+
+          <Pressable onPress={() => setLocationOpen(true)} hitSlop={8} style={styles.deliverTo}>
+            <Text style={styles.deliverToText} numberOfLines={1}>
+              Deliver to {address.label} · 45 min ▾
+            </Text>
+          </Pressable>
+        </>
+      )}
 
       <LocationPickerModal visible={locationOpen} onClose={() => setLocationOpen(false)} />
 
@@ -100,56 +103,55 @@ export function AppHeader({ title, onBack }: AppHeaderProps) {
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
     container: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.md,
+      backgroundColor: colors.background,
+    },
+    mastheadRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.sm,
-      paddingBottom: spacing.sm,
-      backgroundColor: colors.primaryDark,
     },
     titleText: {
-      fontSize: 20,
-      fontWeight: '800',
-      color: '#FFFFFF',
+      fontFamily: SERIF_BOLD,
+      fontSize: 21,
+      color: colors.text,
       flex: 1,
     },
-    locationWrap: {
-      flex: 1,
-      marginRight: spacing.sm,
+    wordmarkWrap: { flex: 1, alignItems: 'center' },
+    wordmark: {
+      fontFamily: SERIF_BOLD,
+      fontSize: 25,
+      color: colors.primaryDark,
+      letterSpacing: 0.3,
     },
-    etaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 3,
-      marginBottom: 3,
+    wordmarkSub: {
+      fontSize: 8.5,
+      letterSpacing: 2.2,
+      textTransform: 'uppercase',
+      color: colors.textMuted,
+      marginTop: 1,
     },
-    etaFlash: { fontSize: 12 },
-    etaLabel: { fontSize: 12, color: 'rgba(255,255,255,0.82)', fontWeight: '500' },
-    etaTime: { fontSize: 12, color: '#FCD535', fontWeight: '800' },
-    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-    pinIcon: { fontSize: 13 },
-    addressLabel: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#FFFFFF',
-      maxWidth: 220,
-    },
-    right: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
+    deliverTo: { alignItems: 'center', marginTop: spacing.sm },
+    deliverToText: {
+      fontSize: 10,
+      letterSpacing: 1.1,
+      textTransform: 'uppercase',
+      color: colors.textMuted,
+      fontWeight: '600',
     },
     iconButton: {
-      width: 36,
-      height: 36,
+      width: 34,
+      height: 34,
       borderRadius: radius.full,
-      backgroundColor: 'rgba(255,255,255,0.15)',
+      borderWidth: 1,
+      borderColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    menuIcon: { fontSize: 18, color: '#FFFFFF' },
-    backIcon: { fontSize: 20, color: '#FFFFFF', fontWeight: '700', lineHeight: 24 },
+    menuIcon: { fontSize: 16, color: colors.primaryDark },
+    backIcon: { fontSize: 20, color: colors.text, fontWeight: '700', lineHeight: 24 },
 
     modalBackdrop: {
       flex: 1,

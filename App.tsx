@@ -59,14 +59,16 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const DeliveryTab = createBottomTabNavigator<DeliveryTabParamList>();
 
-const TAB_ICONS: Record<keyof MainTabParamList, string> = {
-  Home: '🏠',
-  Search: '🔍',
-  Cart: '🛒',
-  Account: '👤',
+/* Line icons rather than emoji — emoji render as full-colour blobs that fight
+   the editorial palette. */
+const TAB_ICONS: Record<keyof MainTabParamList, [string, string]> = {
+  Home: ['home', 'home-outline'],
+  Search: ['search', 'search-outline'],
+  Cart: ['bag-handle', 'bag-handle-outline'],
+  Account: ['person', 'person-outline'],
 };
 
-function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
+function TabIcon({ icon, focused, color }: { icon: [string, string]; focused: boolean; color: string }) {
   const scale = useRef(new Animated.Value(1)).current;
   const prevFocused = useRef(focused);
 
@@ -84,13 +86,13 @@ function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
   }, [focused, bounce]);
 
   return (
-    <Animated.Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5, transform: [{ scale }] }}>
-      {icon}
-    </Animated.Text>
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Ionicons name={(focused ? icon[0] : icon[1]) as any} size={21} color={color} />
+    </Animated.View>
   );
 }
 
-function CartTabIcon({ focused }: { focused: boolean }) {
+function CartTabIcon({ focused, color }: { focused: boolean; color: string }) {
   const { totalItems } = useCart();
   const scale = useRef(new Animated.Value(1)).current;
   const prevFocused = useRef(focused);
@@ -117,15 +119,16 @@ function CartTabIcon({ focused }: { focused: boolean }) {
   }, [totalItems, bounce]);
 
   return (
-    <Animated.Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5, transform: [{ scale }] }}>
-      {TAB_ICONS.Cart}{totalItems > 0 ? ` ${totalItems}` : ''}
-    </Animated.Text>
+    <Animated.View style={{ transform: [{ scale }], flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+      <Ionicons name={(focused ? TAB_ICONS.Cart[0] : TAB_ICONS.Cart[1]) as any} size={21} color={color} />
+      {totalItems > 0 ? <Text style={{ fontSize: 11, fontWeight: '700', color }}>{totalItems}</Text> : null}
+    </Animated.View>
   );
 }
 
 function TabLabel({ label, focused, color }: { label: string; focused: boolean; color: string }) {
   return (
-    <Text style={{ fontSize: 11, color, fontWeight: focused ? '700' : '400', marginTop: -2 }}>
+    <Text style={{ fontSize: 9, color, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 1 }}>
       {label}
     </Text>
   );
@@ -155,7 +158,7 @@ function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={TAB_ICONS.Home} focused={focused} />,
+          tabBarIcon: ({ focused, color }) => <TabIcon icon={TAB_ICONS.Home} focused={focused} color={color} />,
           tabBarLabel: ({ focused, color }) => <TabLabel label="Home" focused={focused} color={color} />,
         }}
       />
@@ -163,7 +166,7 @@ function MainTabs() {
         name="Search"
         component={SearchScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={TAB_ICONS.Search} focused={focused} />,
+          tabBarIcon: ({ focused, color }) => <TabIcon icon={TAB_ICONS.Search} focused={focused} color={color} />,
           tabBarLabel: ({ focused, color }) => <TabLabel label="Search" focused={focused} color={color} />,
         }}
       />
@@ -171,7 +174,7 @@ function MainTabs() {
         name="Cart"
         component={CartScreen}
         options={{
-          tabBarIcon: ({ focused }) => <CartTabIcon focused={focused} />,
+          tabBarIcon: ({ focused, color }) => <CartTabIcon focused={focused} color={color} />,
           tabBarLabel: ({ focused, color }) => <TabLabel label="Cart" focused={focused} color={color} />,
         }}
       />
@@ -179,7 +182,7 @@ function MainTabs() {
         name="Account"
         component={AccountScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={TAB_ICONS.Account} focused={focused} />,
+          tabBarIcon: ({ focused, color }) => <TabIcon icon={TAB_ICONS.Account} focused={focused} color={color} />,
           tabBarLabel: ({ focused, color }) => <TabLabel label="Account" focused={focused} color={color} />,
         }}
       />
@@ -215,7 +218,7 @@ function DeliveryTabs() {
             <Ionicons name={focused ? 'cube' : 'cube-outline'} size={22} color={color} />
           ),
           tabBarLabel: ({ focused, color }) => (
-            <Text style={{ fontSize: 11, color, fontWeight: focused ? '700' : '400', marginTop: -2 }}>Orders</Text>
+            <Text style={{ fontSize: 9, color, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 1 }}>Orders</Text>
           ),
         }}
       />
@@ -227,7 +230,7 @@ function DeliveryTabs() {
             <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={22} color={color} />
           ),
           tabBarLabel: ({ focused, color }) => (
-            <Text style={{ fontSize: 11, color, fontWeight: focused ? '700' : '400', marginTop: -2 }}>Earnings</Text>
+            <Text style={{ fontSize: 9, color, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 1 }}>Earnings</Text>
           ),
         }}
       />
@@ -239,7 +242,7 @@ function DeliveryTabs() {
             <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
           ),
           tabBarLabel: ({ focused, color }) => (
-            <Text style={{ fontSize: 11, color, fontWeight: focused ? '700' : '400', marginTop: -2 }}>Account</Text>
+            <Text style={{ fontSize: 9, color, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 1 }}>Account</Text>
           ),
         }}
       />

@@ -49,12 +49,12 @@ function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
     container: {
       alignItems: 'center',
-      width: 76,
+      width: 96,
     },
     circle: {
-      width: 64,
-      height: 64,
-      borderRadius: radius.full,
+      width: 92,
+      height: 92,
+      borderRadius: radius.md,
       backgroundColor: colors.primaryLight,
       overflow: 'hidden',
       marginBottom: spacing.xs,
@@ -64,19 +64,22 @@ function createStyles(colors: ColorPalette) {
       borderColor: colors.border,
     },
     image: {
-      width: '78%',
-      height: '78%',
+      width: '100%',
+      height: '100%',
     },
     emoji: {
-      fontSize: 30,
-      lineHeight: 38,
+      fontSize: 38,
+      lineHeight: 48,
       textAlign: 'center',
     },
     label: {
       textAlign: 'center',
       fontWeight: '600',
-      fontSize: 12,
-      color: colors.text,
+      fontSize: 10,
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+      color: colors.textMuted,
+      marginTop: 2,
     },
   });
 }

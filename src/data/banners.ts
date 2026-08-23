@@ -28,8 +28,8 @@ export const banners: Banner[] = [
     id: 'b3',
     title: 'Fresh From The Oven',
     subtitle: 'Breads & pastries baked daily',
-    background: '#E8A33D',
-    gradient: ['#E8A33D', '#F0C040'],
+    background: '#C98B6B',
+    gradient: ['#C98B6B', '#DDAA88'],
     emoji: '🥐',
   },
 ];

@@ -113,7 +113,7 @@ export function HomeScreen({ navigation }: Props) {
           <TextInput
             style={styles.searchInput}
             placeholder="Search cakes, breads, namkeen..."
-            placeholderTextColor="rgba(255,255,255,0.5)"
+            placeholderTextColor={colors.textMuted}
             value={search}
             onChangeText={setSearch}
           />
@@ -154,19 +154,15 @@ export function HomeScreen({ navigation }: Props) {
                 {/* Today's Cheapest Basket */}
                 <View style={styles.bundleCard}>
                   <View style={styles.bundleTop}>
-                    <Text style={styles.bundleName}>🧺 {BUNDLE.name}</Text>
-                    <View style={styles.bundleBadge}>
-                      <Text style={styles.bundleBadgeText}>Save ₹{BUNDLE.savings}</Text>
-                    </View>
+                    <Text style={styles.bundleName}>{BUNDLE.name}</Text>
                   </View>
                   <Text style={styles.bundleItems}>{BUNDLE.items}</Text>
                   <View style={styles.bundleFooter}>
                     <View>
                       <Text style={styles.bundlePrice}>₹{BUNDLE.price}</Text>
-                      <Text style={styles.bundleMrp}>Market ₹{BUNDLE.mrp}</Text>
                     </View>
                     <Pressable style={styles.bundleAddAll}>
-                      <Text style={styles.bundleAddAllText}>Add All</Text>
+                      <Text style={styles.bundleAddAllText}>Add to basket</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -302,34 +298,36 @@ function createStyles(colors: ColorPalette) {
     skeletonCell: { width: '47.5%' },
     /* ── Green header ── */
     greenTop: {
-      backgroundColor: colors.primaryDark,
+      backgroundColor: colors.background,
       paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.md,
+      paddingBottom: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     searchRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: 'rgba(255,255,255,0.13)',
-      borderRadius: radius.lg,
+      backgroundColor: colors.surface,
+      borderRadius: radius.full,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.2)',
+      borderColor: colors.border,
       paddingHorizontal: spacing.md,
     },
     searchIcon: {
-      fontSize: 15,
-      marginRight: spacing.xs,
-      color: 'rgba(255,255,255,0.7)',
+      fontSize: 13,
+      marginRight: spacing.sm,
+      color: colors.textMuted,
     },
     searchInput: {
       flex: 1,
       paddingVertical: Platform.OS === 'ios' ? spacing.sm + 2 : spacing.sm,
       fontSize: 14,
-      color: '#FFFFFF',
+      color: colors.text,
       backgroundColor: 'transparent',
     },
     searchClear: {
       fontSize: 14,
-      color: 'rgba(255,255,255,0.65)',
+      color: colors.textMuted,
       paddingLeft: spacing.xs,
     },
     /* ── List content ── */

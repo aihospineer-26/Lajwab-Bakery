@@ -201,7 +201,9 @@ function createStyles(colors: ColorPalette) {
     imageContainer: {
       width: '100%',
       aspectRatio: 1,
-      backgroundColor: '#F7F8F5',
+      /* Warm tint rather than cold grey, so the emoji placeholders read as a
+         deliberate treatment next to the cards that do have photography. */
+      backgroundColor: colors.accentLight,
       borderRadius: radius.md,
       overflow: 'hidden',
       marginBottom: spacing.sm,
@@ -265,21 +267,19 @@ function createStyles(colors: ColorPalette) {
       height: 30,
     },
     addButton: {
-      backgroundColor: colors.primary,
-      borderRadius: radius.sm,
-      paddingVertical: spacing.xs,
+      backgroundColor: 'transparent',
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      paddingVertical: spacing.xs + 1,
       paddingHorizontal: spacing.md,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.35,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 3 },
       elevation: 3,
     },
     addButtonText: {
-      color: '#FFFFFF',
+      color: colors.primary,
       fontWeight: '700',
-      fontSize: 12,
-      letterSpacing: 0.5,
+      fontSize: 10,
+      letterSpacing: 1.4,
     },
     outOfStock: {
       color: colors.danger,
