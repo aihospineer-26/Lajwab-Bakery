@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($response = Invoke-WebRequest -Uri \"http://localhost:8093\" -UseBasicParsing -TimeoutSec 30; $response.StatusCode)",
+      "Read(//c/Users/User/AppData/Local/Temp/grocewell-img-check/**)",
+      "Read(//c/Users/User/AppData/Local/Temp/grocewell-img-check2/**)"
+    ]
+  },
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
+  }
+}

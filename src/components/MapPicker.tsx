@@ -1,0 +1,85 @@
+import React, { useMemo, useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
+import WebView from 'react-native-webview';
+import { radius } from '../theme';
+
+type MapPickerProps = {
+  lat: number;
+  lng: number;
+  onChange: (lat: number, lng: number) => void;
+};
+
+function buildMapHtml(lat: number, lng: number): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { zoomControl: true }).setView([${lat}, ${lng}], 16);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    const marker = L.marker([${lat}, ${lng}], { draggable: true }).addTo(map);
+
+    function post(latLng) {
+      const payload = JSON.stringify({ lat: latLng.lat, lng: latLng.lng });
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(payload);
+      } else {
+        window.parent.postMessage(payload, '*');
+      }
+    }
+
+    marker.on('dragend', () => post(marker.getLatLng()));
+    map.on('click', (e) => {
+      marker.setLatLng(e.latlng);
+      post(e.latlng);
+    });
+  </script>
+</body>
+</html>`;
+}
+
+export function MapPicker({ lat, lng, onChange }: MapPickerProps) {
+  const initial = useRef({ lat, lng });
+  const html = useMemo(() => buildMapHtml(initial.current.lat, initial.current.lng), []);
+
+  return (
+    <View style={styles.wrap}>
+      <WebView
+        originWhitelist={['*']}
+        source={{ html }}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data) as { lat: number; lng: number };
+            onChange(data.lat, data.lng);
+          } catch {
+            // ignore malformed bridge messages
+          }
+        }}
+        style={styles.webview}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    height: 240,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
+  webview: {
+    flex: 1,
+  },
+});
