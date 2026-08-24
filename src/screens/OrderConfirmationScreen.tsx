@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -92,10 +93,10 @@ export function OrderConfirmationScreen({ navigation }: Props) {
               </View>
             </View>
             <Pressable style={styles.riderAction} hitSlop={8}>
-              <Text style={styles.riderActionIcon}>📞</Text>
+              <Ionicons name="call-outline" size={17} color={colors.primary} />
             </Pressable>
             <Pressable style={styles.riderAction} hitSlop={8}>
-              <Text style={styles.riderActionIcon}>💬</Text>
+              <Ionicons name="chatbubble-outline" size={17} color={colors.primary} />
             </Pressable>
           </View>
         ) : null}

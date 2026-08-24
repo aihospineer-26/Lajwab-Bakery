@@ -33,7 +33,6 @@ export type RootStackParamList = {
   Checkout: undefined;
   OrderTracking: { orderId: string; status: string };
   Offers: undefined;
-  Wishlist: undefined;
   Notifications: undefined;
   Wallet: undefined;
   Onboarding: undefined;

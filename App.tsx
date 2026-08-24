@@ -41,8 +41,6 @@ import { OffersScreen } from './src/screens/OffersScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { OrderTrackingScreen } from './src/screens/OrderTrackingScreen';
 import { WalletScreen } from './src/screens/WalletScreen';
-import { WishlistScreen } from './src/screens/WishlistScreen';
-import { WishlistProvider } from './src/state/WishlistContext';
 import { DeliveryAccountScreen } from './src/screens/delivery/DeliveryAccountScreen';
 import { DeliveryEarningsScreen } from './src/screens/delivery/DeliveryEarningsScreen';
 import { DeliveryOrdersScreen } from './src/screens/delivery/DeliveryOrdersScreen';
@@ -302,7 +300,6 @@ function RootNavigator() {
           <Stack.Screen name="Payments" component={PaymentsScreen} />
           <Stack.Screen name="SavingsReport" component={SavingsReportScreen} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
-          <Stack.Screen name="Wishlist" component={WishlistScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Wallet" component={WalletScreen} />
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -330,7 +327,6 @@ function AppContent() {
     <AuthProvider>
       <UserProfileProvider>
         <AppModeProvider>
-        <WishlistProvider>
         <CatalogProvider>
           <CartProvider>
             <LocationProvider>
@@ -344,7 +340,6 @@ function AppContent() {
             <StatusBar style={isDark ? 'light' : 'dark'} />
           </CartProvider>
         </CatalogProvider>
-        </WishlistProvider>
         </AppModeProvider>
       </UserProfileProvider>
     </AuthProvider>

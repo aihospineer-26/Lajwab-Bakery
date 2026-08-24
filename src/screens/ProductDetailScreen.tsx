@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -127,7 +128,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         style={[styles.header, { opacity: headerOpacity, transform: [{ translateY: headerY }] }]}
       >
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={10}>
-          <Text style={styles.backIcon}>←</Text>
+          <Ionicons name="arrow-back" size={21} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{product.name}</Text>
         <View style={{ width: 36 }} />
@@ -191,7 +192,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
           {/* ETA delivery strip */}
           <View style={styles.etaStrip}>
-            <Text style={styles.etaIcon}>⚡</Text>
+            <Ionicons name="time-outline" size={15} color={colors.primary} />
             <Text style={styles.etaText}>
               Delivery in <Text style={styles.etaBold}>45 minutes</Text>
             </Text>

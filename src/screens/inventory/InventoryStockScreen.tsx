@@ -1,4 +1,5 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { resolveImage } from '../../data/productImages';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
@@ -118,7 +119,13 @@ export function InventoryStockScreen() {
 
     return (
       <View style={styles.row}>
-        <Image source={{ uri: item.image }} style={styles.thumb} resizeMode="cover" />
+        {resolveImage(item.id, item.image) ? (
+          <Image source={resolveImage(item.id, item.image)!} style={styles.thumb} resizeMode="cover" />
+        ) : (
+          <View style={[styles.thumb, { alignItems: 'center', justifyContent: 'center' }]}>
+            <Text style={{ fontSize: 22 }}>{item.image}</Text>
+          </View>
+        )}
 
         <View style={styles.rowBody}>
           <Text style={styles.rowName} numberOfLines={1}>

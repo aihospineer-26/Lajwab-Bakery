@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -135,7 +136,7 @@ export function ProfileScreen({ navigation }: Props) {
           {/* Account info */}
           <View style={styles.card}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>🏆</Text>
+              <Ionicons name="ribbon-outline" size={16} color={colors.textMuted} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Membership</Text>
                 <Text style={styles.infoValue}>Gold Member</Text>
@@ -143,7 +144,7 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>📅</Text>
+              <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Member Since</Text>
                 <Text style={styles.infoValue}>June 2026</Text>
@@ -151,7 +152,7 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>📦</Text>
+              <Ionicons name="cube-outline" size={16} color={colors.textMuted} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Total Orders</Text>
                 <Text style={styles.infoValue}>3 orders</Text>

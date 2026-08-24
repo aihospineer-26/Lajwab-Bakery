@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -60,7 +61,7 @@ export function OrdersScreen({ navigation }: Props) {
         </View>
       ) : error ? (
         <View style={styles.centered}>
-          <Text style={styles.centeredEmoji}>⚠️</Text>
+          <Ionicons name="alert-circle-outline" size={38} color={colors.border} />
           <Text style={[typography.body, { textAlign: 'center', marginTop: spacing.sm }]}>
             Couldn't load your orders.
           </Text>
@@ -73,7 +74,7 @@ export function OrdersScreen({ navigation }: Props) {
         </View>
       ) : orders.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.centeredEmoji}>🛍️</Text>
+          <Ionicons name="bag-handle-outline" size={38} color={colors.border} />
           <Text style={[typography.subheading, { marginTop: spacing.sm, fontSize: 20 }]}>No orders yet</Text>
           <Text style={[typography.body, { color: colors.textMuted, marginTop: spacing.xs, textAlign: 'center', lineHeight: 20 }]}>
             Your first order is one tap away — and it's 50% off.
@@ -120,7 +121,7 @@ export function OrdersScreen({ navigation }: Props) {
 
                 <View style={styles.cardBottom}>
                   <View style={styles.itemsRow}>
-                    <Text style={styles.itemsIcon}>🛍️</Text>
+                    <Ionicons name="bag-handle-outline" size={14} color={colors.textMuted} style={{ marginRight: 4 }} />
                     <Text style={styles.itemsText}>{order.itemCount} item{order.itemCount !== 1 ? 's' : ''}</Text>
                   </View>
                   <Text style={styles.total}>₹{order.total}</Text>

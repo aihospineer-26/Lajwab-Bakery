@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -144,7 +145,7 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
         {/* Cancelled banner */}
         {isCancelled ? (
           <View style={styles.cancelledBanner}>
-            <Text style={styles.cancelledIcon}>✕</Text>
+            <Ionicons name="close-circle-outline" size={30} color={colors.danger} />
             <View style={{ flex: 1 }}>
               <Text style={styles.cancelledTitle}>Order Cancelled</Text>
               <Text style={styles.cancelledSub}>This order will not be delivered.</Text>
@@ -175,10 +176,10 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
               </View>
             </View>
             <Pressable style={styles.riderBtn} hitSlop={8}>
-              <Text style={styles.riderBtnIcon}>📞</Text>
+              <Ionicons name="call-outline" size={17} color={colors.primary} />
             </Pressable>
             <Pressable style={styles.riderBtn} hitSlop={8}>
-              <Text style={styles.riderBtnIcon}>💬</Text>
+              <Ionicons name="chatbubble-outline" size={17} color={colors.primary} />
             </Pressable>
           </View>
         ) : null}
@@ -242,7 +243,7 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
           </View>
         ) : (
           <View style={styles.etaCard}>
-            <Text style={styles.etaIcon}>⚡</Text>
+            <Ionicons name="time-outline" size={15} color={colors.primary} />
             <View>
               <Text style={styles.etaLabel}>Estimated Arrival</Text>
               <Text style={styles.etaTime}>10 – 15 minutes</Text>

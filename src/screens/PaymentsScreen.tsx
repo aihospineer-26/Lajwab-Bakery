@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import {
   Pressable,
@@ -83,7 +84,7 @@ export function PaymentsScreen({ navigation }: Props) {
         ))}
 
         <Card style={styles.infoCard}>
-          <Text style={styles.infoIcon}>🔒</Text>
+          <Ionicons name="lock-closed-outline" size={15} color={colors.textMuted} />
           <View style={{ flex: 1 }}>
             <Text style={typography.subheading}>Add a card at checkout</Text>
             <Text style={[typography.caption, styles.infoBody]}>

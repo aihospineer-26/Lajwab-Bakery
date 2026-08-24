@@ -3,7 +3,6 @@ import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native
 import { resolveImage } from '../data/productImages';
 import { useCart } from '../state/CartContext';
 import { useTheme } from '../state/ThemeContext';
-import { useWishlist } from '../state/WishlistContext';
 import { ColorPalette, radius, spacing } from '../theme';
 import { Card } from './Card';
 
@@ -28,18 +27,8 @@ export function ProductCard({ productId, image, name, unit, price, mrp, stock, o
   const photo = resolveImage(productId, image);
   const { getQuantity, increment, decrement } = useCart();
   const { colors, typography } = useTheme();
-  const { isWishlisted, toggleWishlist } = useWishlist();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const wishlisted = isWishlisted(productId);
-  const heartScale = useRef(new Animated.Value(1)).current;
 
-  const handleWishlist = () => {
-    Animated.sequence([
-      Animated.timing(heartScale, { toValue: 1.4, duration: 100, useNativeDriver: true }),
-      Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, speed: 28, bounciness: 12 }),
-    ]).start();
-    toggleWishlist(productId);
-  };
   const quantity = getQuantity(productId);
   const discount = mrp && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : null;
   const isOutOfStock = stock !== undefined && stock <= 0;
@@ -111,11 +100,6 @@ export function ProductCard({ productId, image, name, unit, price, mrp, stock, o
           ) : (
             <Text style={styles.emoji}>{image}</Text>
           )}
-          <Pressable style={styles.heartBtn} onPress={handleWishlist} hitSlop={8}>
-            <Animated.Text style={[styles.heartIcon, { transform: [{ scale: heartScale }] }]}>
-              {wishlisted ? '❤️' : '🤍'}
-            </Animated.Text>
-          </Pressable>
         </View>
       </Pressable>
 
@@ -219,26 +203,6 @@ function createStyles(colors: ColorPalette) {
       lineHeight: 66,
       textAlign: 'center',
     },
-    discountBadge: {
-      position: 'absolute',
-      top: spacing.xs,
-      left: spacing.xs,
-      backgroundColor: '#E53935',
-      borderRadius: radius.sm,
-      paddingVertical: 2,
-      paddingHorizontal: 6,
-    },
-    discountText: {
-      color: '#FFFFFF',
-      fontWeight: '700',
-      fontSize: 10,
-    },
-    heartBtn: {
-      position: 'absolute',
-      top: spacing.xs,
-      right: spacing.xs,
-    },
-    heartIcon: { fontSize: 16 },
     info: {
       flex: 1,
       gap: 2,

@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { resolveImage } from '../../data/productImages';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -142,7 +143,13 @@ export function InventoryProductsScreen() {
 
     return (
       <Pressable style={styles.row} onPress={() => setModalProduct(item)}>
-        <Image source={{ uri: item.image }} style={styles.thumb} resizeMode="cover" />
+        {resolveImage(item.id, item.image) ? (
+          <Image source={resolveImage(item.id, item.image)!} style={styles.thumb} resizeMode="cover" />
+        ) : (
+          <View style={[styles.thumb, { alignItems: 'center', justifyContent: 'center' }]}>
+            <Text style={{ fontSize: 22 }}>{item.image}</Text>
+          </View>
+        )}
         <View style={styles.rowBody}>
           <Text style={styles.rowName} numberOfLines={1}>
             {item.name}
@@ -371,7 +378,13 @@ function ProductFormModal({
 
         <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
           {form.image.trim() !== '' && (
-            <Image source={{ uri: form.image }} style={styles.previewImage} resizeMode="cover" />
+            resolveImage(form.image, form.image) ? (
+              <Image source={resolveImage(form.image, form.image)!} style={styles.previewImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.previewImage, { alignItems: 'center', justifyContent: 'center' }]}>
+                <Text style={{ fontSize: 26 }}>{form.image}</Text>
+              </View>
+            )
           )}
 
           <FormInput label="Name" value={form.name} onChangeText={setField('name')} error={errors.name} placeholder="Black Forest Cake" />

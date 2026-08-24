@@ -1,4 +1,6 @@
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { resolveImage } from '../data/productImages';
+import { Ionicons } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -39,17 +41,6 @@ const TRENDING = [
   { label: 'Cookies', emoji: '🍪' },
 ];
 
-const CAT_EMOJI: Record<string, string> = {
-  fruits: '🍎',
-  vegetables: '🥦',
-  dairy: '🥛',
-  bakery: '🍞',
-  snacks: '🍿',
-  beverages: '🥤',
-  grains: '🌾',
-  spices: '🌶️',
-};
-
 const CAT_COLOR: Record<string, string> = {
   fruits: '#FFF0E6',
   vegetables: '#E8F5E9',
@@ -59,17 +50,6 @@ const CAT_COLOR: Record<string, string> = {
   beverages: '#E8EAF6',
   grains: '#FBE9E7',
   spices: '#FFEBEE',
-};
-
-const CAT_ACCENT: Record<string, string> = {
-  fruits: '#F07A1C',
-  vegetables: '#2E7D32',
-  dairy: '#1565C0',
-  bakery: '#F9A825',
-  snacks: '#AD1457',
-  beverages: '#3949AB',
-  grains: '#BF360C',
-  spices: '#C62828',
 };
 
 /* Staggered fade+slide entrance */
@@ -144,12 +124,12 @@ export function SearchScreen({ navigation }: Props) {
       {/* ── Green header ── */}
       <View style={styles.header}>
         <View style={[styles.searchBar, isFocused && styles.searchBarFocused]}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search-outline" size={16} color={colors.textMuted} style={{ marginRight: spacing.sm }} />
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
             placeholder="Search cakes, breads, namkeen..."
-            placeholderTextColor="rgba(255,255,255,0.55)"
+            placeholderTextColor={colors.textMuted}
             value={query}
             onChangeText={setQuery}
             onFocus={() => setIsFocused(true)}
@@ -161,7 +141,7 @@ export function SearchScreen({ navigation }: Props) {
           {query.length > 0 && (
             <Pressable onPress={() => setQuery('')} hitSlop={12}>
               <View style={styles.clearBtn}>
-                <Text style={styles.clearIcon}>✕</Text>
+                <Ionicons name="close" size={16} color={colors.textMuted} />
               </View>
             </Pressable>
           )}
@@ -186,13 +166,11 @@ export function SearchScreen({ navigation }: Props) {
           }
           renderItem={({ item }) => {
             const active = selectedCatId === item.id;
-            const emoji = CAT_EMOJI[item.id] ?? '🛒';
             return (
               <Pressable
                 style={[styles.chip, active && styles.chipActive]}
                 onPress={() => setSelectedCatId(active ? null : item.id)}
               >
-                <Text style={styles.chipEmoji}>{emoji}</Text>
                 <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.name}</Text>
               </Pressable>
             );
@@ -209,7 +187,7 @@ export function SearchScreen({ navigation }: Props) {
             {activeCatName ? <Text style={styles.filterBold}> in {activeCatName}</Text> : null}
           </Text>
           <Pressable style={styles.clearFilter} onPress={clearAll} hitSlop={8}>
-            <Text style={styles.clearFilterText}>✕ Clear</Text>
+            <Text style={styles.clearFilterText}>Clear</Text>
           </Pressable>
         </View>
       )}
@@ -230,7 +208,7 @@ export function SearchScreen({ navigation }: Props) {
                 {recent.map((term, i) => (
                   <FadeIn key={term} index={i}>
                     <Pressable style={styles.recentChip} onPress={() => setQuery(term)}>
-                      <Text style={styles.recentIcon}>🕘</Text>
+                      <Ionicons name="time-outline" size={15} color={colors.textMuted} style={{ marginRight: spacing.sm }} />
                       <Text style={styles.recentText}>{term}</Text>
                       <Pressable
                         hitSlop={8}
@@ -259,7 +237,6 @@ export function SearchScreen({ navigation }: Props) {
                     rememberSearch(t.label);
                   }}
                 >
-                  <Text style={styles.trendingEmoji}>{t.emoji}</Text>
                   <Text style={styles.trendingText}>{t.label}</Text>
                 </Pressable>
               </FadeIn>
@@ -270,7 +247,7 @@ export function SearchScreen({ navigation }: Props) {
           <Text style={[styles.sectionLabel, { marginTop: spacing.xl }]}>Shop by Category</Text>
           <View style={styles.catGrid}>
             {categories.map((cat, i) => {
-              const accent = CAT_ACCENT[cat.id] ?? colors.primary;
+              const accent = colors.primary;
               const count = products.filter(p => p.categoryId === cat.id).length;
               return (
                 <FadeIn key={cat.id} index={i} style={{ width: catCardWidth }}>
@@ -278,11 +255,15 @@ export function SearchScreen({ navigation }: Props) {
                     style={styles.catCard}
                     onPress={() => setSelectedCatId(cat.id)}
                   >
-                    <Image
-                      source={{ uri: cat.image }}
-                      style={styles.catImage}
-                      resizeMode="cover"
-                    />
+                    {resolveImage(cat.image, cat.image) ? (
+                      <Image
+                        source={resolveImage(cat.image, cat.image)!}
+                        style={styles.catImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={[styles.catImage, { backgroundColor: colors.accentLight }]} />
+                    )}
                     <View style={styles.catCardBody}>
                       <Text style={styles.catName}>{cat.name}</Text>
                       <Text style={[styles.catCount, { color: accent }]}>{count} items ›</Text>
@@ -297,7 +278,7 @@ export function SearchScreen({ navigation }: Props) {
       ) : filtered.length === 0 ? (
         /* ── Empty results ── */
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>🕵️</Text>
+          <Ionicons name="search" size={38} color={colors.border} />
           <Text style={[typography.subheading, { textAlign: 'center', marginTop: spacing.sm }]}>
             Nothing found
           </Text>
@@ -356,7 +337,9 @@ function createStyles(colors: ColorPalette) {
 
     /* ── Header ── */
     header: {
-      backgroundColor: colors.primaryDark,
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.sm,
       paddingBottom: spacing.md,
@@ -364,17 +347,17 @@ function createStyles(colors: ColorPalette) {
     searchBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: 'rgba(255,255,255,0.14)',
-      borderRadius: radius.lg,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.full,
       paddingHorizontal: spacing.md,
       paddingVertical: 10,
       gap: spacing.sm,
-      borderWidth: 1.5,
-      borderColor: 'transparent',
     },
     searchBarFocused: {
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      borderColor: 'rgba(255,255,255,0.35)',
+      backgroundColor: colors.surface,
+      borderColor: colors.primary,
     },
     searchIcon: {
       fontSize: 16,
@@ -382,20 +365,20 @@ function createStyles(colors: ColorPalette) {
     searchInput: {
       flex: 1,
       fontSize: 15,
-      color: '#FFFFFF',
+      color: colors.text,
       fontWeight: '500',
     },
     clearBtn: {
       width: 22,
       height: 22,
       borderRadius: 11,
-      backgroundColor: 'rgba(255,255,255,0.25)',
+      backgroundColor: colors.surfaceMuted,
       alignItems: 'center',
       justifyContent: 'center',
     },
     clearIcon: {
       fontSize: 11,
-      color: '#FFFFFF',
+      color: colors.textMuted,
       fontWeight: '800',
     },
 
