@@ -356,13 +356,13 @@ function createStyles(colors: ColorPalette) {
     valuesDot: { fontSize: 10, color: colors.border },
     /* ── Flash card ── */
     flashCard: {
-      backgroundColor: '#FBBF24',
+      backgroundColor: colors.accent,
       borderRadius: radius.md,
       padding: spacing.md,
       marginTop: spacing.sm,
       flexDirection: 'row',
       alignItems: 'center',
-      shadowColor: '#F59E0B',
+      shadowColor: colors.accent,
       shadowOpacity: 0.25,
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 3 },

@@ -19,7 +19,7 @@
         "INTERNET"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4E0",
+        "backgroundColor": "#F4E8E0",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -42,7 +42,7 @@
         {
           "image": "./assets/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#FAFBF7"
+          "backgroundColor": "#FBF6F0"
         }
       ]
     ]

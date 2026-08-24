@@ -13,12 +13,12 @@ import { ColorPalette, radius, spacing } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'Orders'>;
 
 const STATUS_CONFIG: Record<OrderStatus, { bg: string; text: string; icon: string }> = {
-  placed: { bg: '#EFF6FF', text: '#2563EB', icon: '⏳' },
-  accepted: { bg: '#EFF6FF', text: '#2563EB', icon: '👍' },
+  placed: { bg: '#F4E8E0', text: '#B4553C', icon: '⏳' },
+  accepted: { bg: '#F4E8E0', text: '#B4553C', icon: '👍' },
   packed: { bg: '#F3E8FF', text: '#7C3AED', icon: '📦' },
   out_for_delivery: { bg: '#FEF3C7', text: '#D97706', icon: '🛵' },
   delivered: { bg: '#E0F7EB', text: '#0D7A3E', icon: '✅' },
-  cancelled: { bg: '#FEE2E2', text: '#DC2626', icon: '✕' },
+  cancelled: { bg: '#F7E4E1', text: '#B03A2E', icon: '✕' },
 };
 
 export function OrdersScreen({ navigation }: Props) {

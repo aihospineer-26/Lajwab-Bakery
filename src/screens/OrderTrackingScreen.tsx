@@ -318,8 +318,8 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: spacing.md,
       paddingVertical: 5,
     },
-    liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#1A9E55' },
-    liveText: { fontSize: 12, fontWeight: '700', color: '#1A9E55' },
+    liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
+    liveText: { fontSize: 12, fontWeight: '700', color: colors.success },
 
     cancelledBanner: {
       flexDirection: 'row',
@@ -333,7 +333,7 @@ function createStyles(colors: ColorPalette) {
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: '#DC2626',
+      backgroundColor: colors.danger,
       color: '#FFFFFF',
       fontSize: 14,
       fontWeight: '900',
@@ -453,14 +453,14 @@ function createStyles(colors: ColorPalette) {
 
     cancelBtn: {
       borderWidth: 1.5,
-      borderColor: '#DC2626',
+      borderColor: colors.danger,
       borderRadius: radius.md,
       paddingVertical: spacing.md,
       alignItems: 'center',
       justifyContent: 'center',
     },
     cancelBtnDisabled: { opacity: 0.6 },
-    cancelBtnText: { fontSize: 14, fontWeight: '700', color: '#DC2626' },
+    cancelBtnText: { fontSize: 14, fontWeight: '700', color: colors.danger },
     cancelError: { fontSize: 13, color: colors.danger, textAlign: 'center' },
   });
 }

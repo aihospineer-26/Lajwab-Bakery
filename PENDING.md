@@ -17,7 +17,7 @@ Janmashtami offer and 18 product photos are done.
 | 1 | **Product photos** — 18 of 36 still emoji. Now the most visible flaw: the editorial redesign made their absence *more* obvious, not less | [You] | — |
 | 2 | **Deploy to Vercel** — `npm run build`, then he taps a link on his own phone instead of crowding a laptop | [Me] | 15m |
 | 3 | **Real prices** — placeholders are realistic Delhi rates but wrong. Owner correcting them on the spot turns a demo into a working session | [You] | — |
-| 4 | Phone + mock OTP login (looks real, no WhatsApp API needed) | [Me] | 30m |
+| ~~4~~ | ~~Phone + mock OTP login~~ — **done.** Phone number + 6-digit code, WhatsApp-branded. Runs on-device in demo mode, no API needed. See [WHATSAPP_OTP.md](WHATSAPP_OTP.md) | [Me] | ✅ |
 
 ~~Fix narrow-width clipping~~ — **there was no bug.** Headless Chrome
 enforces a ~512px minimum window on Windows, so `--window-size=430` laid out
@@ -85,7 +85,8 @@ checked atomically.
 
 ### 4. Admin password login **[Me]** + **[You]**
 
-No password auth exists anywhere — auth is magic-link only. For the dashboard:
+Customers now sign in with a phone OTP. Staff should not — one shared account,
+no SMS cost, different threat model. For the dashboard:
 
 1. [Me] `signInWithPassword` + an admin login screen
 2. [You] Supabase → Authentication → disable public signups
@@ -106,16 +107,17 @@ real backend for webhooks.
 
 Legally required to sell food for money in India. No code path around it.
 
-### 7. Supabase redirect allowlist **[You]**
+### 7. ~~Supabase redirect allowlist~~ — **no longer needed**
 
-Add `lajwabbakery://` and `lajwabbakery://*`.
-⚠️ Earlier notes said `grocewell://` — that is wrong and would break every login.
-The scheme comes from `app.json` via `Linking.createURL()`.
+Deep-link redirects existed only for magic links. Phone OTP never leaves the
+app, so there is no return leg to allowlist. `Linking` is gone from the auth
+path entirely.
 
 ### 8. First EAS build **[You]**
 
-`eas build --profile preview --platform android` — never run. Magic links cannot
-be verified on localhost; web takes a different code path.
+`eas build --profile preview --platform android` — never run. Worth doing early:
+SMS/WhatsApp autofill of the OTP is Android-only behaviour that the web build
+cannot exercise.
 
 ---
 
@@ -129,14 +131,16 @@ be verified on localhost; web takes a different code path.
 | 12 | **Daily stock reset** — bakery stock is "what we baked today", not a warehouse count. Yesterday's bread shouldn't be sellable | [Me] |
 | 13 | **Product variants** — 500g/1kg is currently two separate rows. Much cheaper to do before seeding a full catalog than after | [Me] |
 | 14 | **Bansuri as a ₹0 line item** — otherwise packing staff never see it | [Me] |
-| 15 | **Abuse cap on the 50%** — magic-link means a new email is a new "first order". Limit by phone or address | [Me] |
+| 15 | **Abuse cap on the 50%** — phone identity makes this enforceable now (a second number costs real money, a second Gmail did not). Still needs gating inside `place_order` | [Me] |
 | 16 | Replace remaining mock data: reviews, notifications, wallet, savings report, rider earnings | [Me] |
 
 ---
 
 ## 🟡 LATER
 
-- Real WhatsApp OTP (Meta business verification + template approval — days, not hours)
+- ~~Real WhatsApp OTP~~ — code is written and verified end-to-end in demo mode.
+  Remaining is config only: approve the Meta template, deploy
+  `supabase/functions/whatsapp-otp/`, register the Send SMS hook. **[You]**
 - Google Play listing, privacy policy URL, store assets
 - Live GPS tracking (needs Play background-location review, 1–3 weeks)
 - Push notifications

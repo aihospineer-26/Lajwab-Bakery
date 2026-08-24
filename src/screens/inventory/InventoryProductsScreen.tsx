@@ -388,7 +388,9 @@ function ProductFormModal({
           )}
 
           <FormInput label="Name" value={form.name} onChangeText={setField('name')} error={errors.name} placeholder="Black Forest Cake" />
-          <FormInput label="Image URL" value={form.image} onChangeText={setField('image')} error={errors.image} placeholder="https://..." autoCapitalize="none" />
+          {/* Images are bundled assets keyed by product id (see productImages.ts).
+              A photo URL still works, and an emoji stands in when neither exists. */}
+          <FormInput label="Photo" value={form.image} onChangeText={setField('image')} error={errors.image} placeholder="Emoji, or https://… for a hosted photo" autoCapitalize="none" />
 
           <View style={styles.rowFields}>
             <View style={{ flex: 1 }}>

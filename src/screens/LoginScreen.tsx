@@ -20,13 +20,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { FormInput } from '../components/FormInput';
 import { RootStackParamList } from '../navigation/types';
+import { digitsOnly, formatMobile, isValidMobile } from '../services/otp';
 import { useAuth } from '../state/AuthContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function ci(filename: string) {
   return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=200`;
@@ -112,11 +111,11 @@ export function LoginScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const tileSize = Math.floor((width - TILE_GAP * (NUM_COLS + 1)) / NUM_COLS);
-  const { sendMagicLink, linkError, clearLinkError } = useAuth();
+  const { sendOtp } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [mobileError, setMobileError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -130,17 +129,17 @@ export function LoginScreen({ navigation }: Props) {
     ]).start();
   }, []);
 
-  const handleSendLink = async () => {
-    const trimmed = email.trim();
-    if (!trimmed) { setEmailError('Enter your email to continue'); return; }
-    if (!EMAIL_REGEX.test(trimmed)) { setEmailError('Enter a valid email address'); return; }
-    setEmailError(null);
+  const handleContinue = async () => {
+    const local = digitsOnly(mobile);
+    if (!local) { setMobileError('Enter your mobile number to continue'); return; }
+    if (!isValidMobile(local)) { setMobileError('Enter a valid 10-digit mobile number'); return; }
+    setMobileError(null);
     setFormError(null);
     setIsSending(true);
-    const sendError = await sendMagicLink(trimmed);
+    const sendError = await sendOtp(local);
     setIsSending(false);
     if (sendError) { setFormError(sendError); return; }
-    navigation.navigate('CheckEmail', { email: trimmed });
+    navigation.navigate('VerifyOtp', { mobile: local });
   };
 
   return (
@@ -183,35 +182,32 @@ export function LoginScreen({ navigation }: Props) {
           <Animated.View style={[styles.form, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <Text style={styles.formHeading}>Log in or sign up</Text>
 
-            {/* Set when returning from an expired or already-used magic link */}
-            {linkError ? (
-              <View style={styles.linkErrorBox}>
-                <MaterialCommunityIcons name="link-off" size={16} color={colors.danger} />
-                <Text style={styles.linkErrorText}>
-                  That sign-in link didn't work — it may have expired. Enter your email to get a new one.
-                </Text>
-              </View>
-            ) : null}
+            <Text style={styles.formSub}>
+              We'll send a 6-digit code on WhatsApp to confirm it's you.
+            </Text>
 
             <FormInput
-              label="Email address"
-              placeholder="you@example.com"
-              keyboardType="email-address"
+              label="Mobile number"
+              placeholder="98765 43210"
+              prefix="+91"
+              keyboardType="phone-pad"
               autoCapitalize="none"
-              value={email}
-              onChangeText={(t) => { setEmail(t); setEmailError(null); clearLinkError(); }}
-              error={emailError ?? undefined}
+              maxLength={11}
+              value={formatMobile(mobile)}
+              onChangeText={(t) => { setMobile(digitsOnly(t)); setMobileError(null); }}
+              error={mobileError ?? undefined}
             />
 
             {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
-            <Button label="Continue" onPress={handleSendLink} loading={isSending} />
+            <Button label="Continue" onPress={handleContinue} loading={isSending} />
 
-            <Pressable onPress={() => navigation.navigate('SignUp')} hitSlop={8} style={styles.link}>
-              <Text style={styles.linkText}>
-                {"New here? "}<Text style={styles.linkAccent}>Create an account</Text>
-              </Text>
-            </Pressable>
+            {/* No separate sign-up: the first verified code creates the account. */}
+            <Text style={styles.terms}>
+              By continuing you agree to our{' '}
+              <Text style={styles.linkAccent}>Terms of Service</Text> and{' '}
+              <Text style={styles.linkAccent}>Privacy Policy</Text>.
+            </Text>
 
             <View style={styles.partnerDivider} />
 
@@ -245,13 +241,13 @@ export function LoginScreen({ navigation }: Props) {
             </View>
             <Text style={styles.sheetTitle}>Delivery Partners</Text>
             <Text style={styles.sheetBody}>
-              Partner accounts are set up by the Lajwab Bakery team. Sign in with the email
-              you registered with and you'll go straight to your deliveries — no extra
-              step needed.
+              Partner accounts are set up by the Lajwab Bakery team. Sign in with the
+              mobile number you registered with and you'll go straight to your
+              deliveries — no extra step needed.
             </Text>
             <Text style={styles.sheetBody}>
               Want to ride with us? Write to{' '}
-              <Text style={styles.linkAccent}>partners@grocewell.app</Text>
+              <Text style={styles.linkAccent}>partners@lajwabbakery.in</Text>
             </Text>
             <Pressable style={styles.sheetButton} onPress={() => setPartnerNoticeVisible(false)}>
               <Text style={styles.sheetButtonText}>Got it</Text>
@@ -328,21 +324,20 @@ function createStyles(colors: ColorPalette) {
       paddingTop: spacing.xs,
     },
     linkText: { fontSize: 14, color: colors.textMuted },
+    terms: {
+      fontSize: 11,
+      lineHeight: 16,
+      color: colors.textMuted,
+      textAlign: 'center',
+      paddingTop: spacing.xs,
+    },
     linkAccent: { color: colors.primary, fontWeight: '700' },
 
-    linkErrorBox: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing.sm,
-      backgroundColor: '#FEE2E2',
-      borderRadius: radius.md,
-      padding: spacing.md,
-    },
-    linkErrorText: {
-      flex: 1,
-      fontSize: 12,
-      color: '#991B1B',
-      lineHeight: 17,
+    formSub: {
+      fontSize: 13,
+      color: colors.textMuted,
+      lineHeight: 18,
+      marginTop: -spacing.xs,
     },
 
     partnerDivider: {

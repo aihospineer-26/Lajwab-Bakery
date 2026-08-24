@@ -207,7 +207,7 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '500',
     },
     goldBadge: {
-      color: '#B8860B',
+      color: colors.accent,
       fontWeight: '700',
     },
     statDivider: {
@@ -264,7 +264,7 @@ function createStyles(colors: ColorPalette) {
     /* ── Log Out ── */
     logoutBtn: {
       borderWidth: 1.5,
-      borderColor: '#E53E3E',
+      borderColor: colors.danger,
       borderRadius: radius.md,
       paddingVertical: spacing.md,
       alignItems: 'center',
@@ -272,7 +272,7 @@ function createStyles(colors: ColorPalette) {
     logoutText: {
       fontSize: 14,
       fontWeight: '700',
-      color: '#E53E3E',
+      color: colors.danger,
     },
     /* ── Farm Partnership ── */
     farmCard: {

@@ -19,7 +19,7 @@ import { AccountScreen } from './src/screens/AccountScreen';
 import { AddressesScreen } from './src/screens/AddressesScreen';
 import { CartScreen } from './src/screens/CartScreen';
 import { CategoryScreen } from './src/screens/CategoryScreen';
-import { CheckEmailScreen } from './src/screens/CheckEmailScreen';
+import { OtpScreen } from './src/screens/OtpScreen';
 import { CustomerSupportScreen } from './src/screens/CustomerSupportScreen';
 import { FaqScreen } from './src/screens/FaqScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -33,7 +33,6 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { SavingsReportScreen } from './src/screens/SavingsReportScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
-import { SignUpScreen } from './src/screens/SignUpScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
@@ -251,7 +250,9 @@ function DeliveryTabs() {
 // Skips login while running the dev server so the app can be previewed directly.
 // Tied to __DEV__ so a release build always enforces login, whatever this is set to.
 // Set to `false` when you want to test the login flow locally.
-const SKIP_AUTH_FOR_PREVIEW = __DEV__;
+/* Dev builds skip the login wall so every screen stays reachable. Set
+   EXPO_PUBLIC_SHOW_AUTH=1 to exercise the real OTP flow while developing. */
+const SKIP_AUTH_FOR_PREVIEW = __DEV__ && process.env.EXPO_PUBLIC_SHOW_AUTH !== '1';
 
 function RootNavigator() {
   const { session, isLoading } = useAuth();
@@ -277,8 +278,7 @@ function RootNavigator() {
       ) : !session && !SKIP_AUTH_FOR_PREVIEW ? (
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="CheckEmail" component={CheckEmailScreen} />
+          <Stack.Screen name="VerifyOtp" component={OtpScreen} />
         </>
       ) : mode === 'delivery' ? (
         <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />

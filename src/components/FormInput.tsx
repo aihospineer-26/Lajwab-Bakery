@@ -12,6 +12,9 @@ type FormInputProps = {
   keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   autoFocus?: boolean;
+  /* Fixed text pinned inside the field, e.g. a +91 dialling code. */
+  prefix?: string;
+  maxLength?: number;
 };
 
 export function FormInput({
@@ -23,26 +26,48 @@ export function FormInput({
   keyboardType,
   autoCapitalize = 'sentences',
   autoFocus,
+  prefix,
+  maxLength,
 }: FormInputProps) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [isFocused, setIsFocused] = useState(false);
 
+  const shared = {
+    placeholder,
+    placeholderTextColor: colors.textMuted,
+    value,
+    onChangeText,
+    keyboardType,
+    autoCapitalize,
+    autoFocus,
+    maxLength,
+    onFocus: () => setIsFocused(true),
+    onBlur: () => setIsFocused(false),
+  };
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[styles.input, isFocused && styles.inputFocused, error && styles.inputError]}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        autoFocus={autoFocus}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-      />
+
+      {prefix ? (
+        <View
+          style={[
+            styles.prefixRow,
+            isFocused && styles.inputFocused,
+            error && styles.inputError,
+          ]}
+        >
+          <Text style={styles.prefix}>{prefix}</Text>
+          <TextInput style={styles.prefixInput} {...shared} />
+        </View>
+      ) : (
+        <TextInput
+          style={[styles.input, isFocused && styles.inputFocused, error && styles.inputError]}
+          {...shared}
+        />
+      )}
+
       {error ? <Text style={[typography.caption, styles.error]}>{error}</Text> : null}
     </View>
   );
@@ -65,6 +90,28 @@ function createStyles(colors: ColorPalette) {
       borderColor: colors.border,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm + 2,
+      fontSize: 15,
+      color: colors.text,
+    },
+    prefixRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      paddingHorizontal: spacing.md,
+    },
+    prefix: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textMuted,
+      marginRight: spacing.sm,
+    },
+    prefixInput: {
+      flex: 1,
+      paddingVertical: spacing.sm + 2,
+      paddingHorizontal: 0,
       fontSize: 15,
       color: colors.text,
     },

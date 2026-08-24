@@ -22,8 +22,7 @@ export type InventoryTabParamList = {
 
 export type RootStackParamList = {
   Login: undefined;
-  SignUp: undefined;
-  CheckEmail: { email: string };
+  VerifyOtp: { mobile: string; fullName?: string };
   MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
   DeliveryTabs: NavigatorScreenParams<DeliveryTabParamList> | undefined;
   InventoryTabs: NavigatorScreenParams<InventoryTabParamList> | undefined;

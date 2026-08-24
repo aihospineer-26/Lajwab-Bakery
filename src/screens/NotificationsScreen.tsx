@@ -19,8 +19,8 @@ const TYPE_ICON: Record<AppNotification['type'], string> = {
 };
 
 const TYPE_COLOR: Record<AppNotification['type'], string> = {
-  order: '#1A9E55',
-  offer: '#F07A1C',
+  order: '#6B8F6F',
+  offer: '#B4553C',
   system: '#6B7280',
 };
 

@@ -73,7 +73,7 @@ export function WalletScreen({ navigation }: Props) {
                 <Text style={styles.txLabel}>{tx.label}</Text>
                 <Text style={styles.txDate}>{tx.date}</Text>
               </View>
-              <Text style={[styles.txAmount, { color: tx.type === 'credit' ? '#1A9E55' : '#DC2626' }]}>
+              <Text style={[styles.txAmount, { color: tx.type === 'credit' ? colors.success : colors.danger }]}>
                 {tx.type === 'credit' ? '+' : ''}₹{Math.abs(tx.amount)}
               </Text>
             </View>
@@ -108,7 +108,7 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: spacing.md,
       paddingVertical: 5,
     },
-    balanceBadgeText: { fontSize: 12, fontWeight: '700', color: '#7AE89A' },
+    balanceBadgeText: { fontSize: 12, fontWeight: '700', color: colors.success },
 
     sectionTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
 

@@ -317,7 +317,7 @@ function createStyles(colors: ColorPalette) {
     },
     signOutBtn: {
       borderWidth: 1.5,
-      borderColor: '#E53E3E',
+      borderColor: colors.danger,
       borderRadius: radius.md,
       paddingVertical: spacing.md,
       alignItems: 'center',
@@ -325,7 +325,7 @@ function createStyles(colors: ColorPalette) {
     signOutText: {
       fontSize: 14,
       fontWeight: '700',
-      color: '#E53E3E',
+      color: colors.danger,
     },
   });
 }

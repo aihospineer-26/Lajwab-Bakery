@@ -214,7 +214,7 @@ function createStyles(colors: ColorPalette) {
     flashTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
     timerBox: { alignItems: 'flex-end', gap: 2 },
     timerLabel: { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
-    timer: { fontSize: 22, fontWeight: '900', color: '#FCD535', letterSpacing: 1 },
+    timer: { fontSize: 22, fontWeight: '900', color: colors.accent, letterSpacing: 1 },
     flashSub: { fontSize: 13, color: 'rgba(255,255,255,0.65)' },
     flashScroll: { marginTop: spacing.sm },
     flashItem: {
@@ -229,14 +229,14 @@ function createStyles(colors: ColorPalette) {
     flashItemEmoji: { fontSize: 32 },
     flashItemName: { fontSize: 12, fontWeight: '600', color: '#FFFFFF', textAlign: 'center' },
     flashBadge: {
-      backgroundColor: '#F07A1C',
+      backgroundColor: colors.primary,
       borderRadius: radius.full,
       paddingHorizontal: 8,
       paddingVertical: 3,
     },
     flashBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF' },
     flashOriginal: { fontSize: 11, color: 'rgba(255,255,255,0.45)', textDecorationLine: 'line-through' },
-    flashPrice: { fontSize: 15, fontWeight: '900', color: '#FCD535' },
+    flashPrice: { fontSize: 15, fontWeight: '900', color: colors.accent },
 
     dealGrid: {
       flexDirection: 'row',

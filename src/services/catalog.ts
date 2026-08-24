@@ -3,10 +3,10 @@ import { products as localProducts, Product } from '../data/products';
 import { fetchProductOverlay, fetchStockOverrides } from './inventory';
 import { supabase } from './supabase';
 
-/* The Supabase project is still seeded with the old grocery catalog, so the
-   bakery menu in src/data is the source of truth until it is re-seeded. Flip
-   this off once `products`/`categories` hold Lajwab's real rows. */
-const USE_LOCAL_CATALOG = true;
+/* The catalog now comes from Supabase, seeded by supabase/02_seed_lajwab.sql.
+   Flip back to true to run the app off the bundled menu in src/data — useful
+   with no network, or if the project is ever re-seeded. */
+const USE_LOCAL_CATALOG = false;
 
 const DEMO_STOCK = 25;
 

@@ -161,7 +161,7 @@ function createStyles() {
       backgroundColor: 'rgba(0,0,0,0.18)',
     },
     dotActive: {
-      backgroundColor: '#1A9E55',
+      backgroundColor: '#B4553C',
       width: 16,
       borderRadius: 3,
     },

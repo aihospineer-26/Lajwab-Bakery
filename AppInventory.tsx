@@ -8,13 +8,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { InventoryTabParamList, RootStackParamList } from './src/navigation/types';
-import { CheckEmailScreen } from './src/screens/CheckEmailScreen';
+import { OtpScreen } from './src/screens/OtpScreen';
 import { InventoryAccountScreen } from './src/screens/inventory/InventoryAccountScreen';
 import { InventoryOrdersScreen } from './src/screens/inventory/InventoryOrdersScreen';
 import { InventoryProductsScreen } from './src/screens/inventory/InventoryProductsScreen';
 import { InventoryStockScreen } from './src/screens/inventory/InventoryStockScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
-import { SignUpScreen } from './src/screens/SignUpScreen';
 import { AuthProvider, useAuth } from './src/state/AuthContext';
 import { CatalogProvider } from './src/state/CatalogContext';
 import { ThemeProvider, useTheme } from './src/state/ThemeContext';
@@ -148,7 +147,9 @@ function accessDeniedStyles(colors: ReturnType<typeof useTheme>['colors']) {
 
 // Skips login while running the dev server so the dashboard can be previewed
 // directly. Tied to __DEV__ so a real deployment always enforces login.
-const SKIP_AUTH_FOR_PREVIEW = __DEV__;
+/* Dev builds skip the login wall so every screen stays reachable. Set
+   EXPO_PUBLIC_SHOW_AUTH=1 to exercise the real OTP flow while developing. */
+const SKIP_AUTH_FOR_PREVIEW = __DEV__ && process.env.EXPO_PUBLIC_SHOW_AUTH !== '1';
 
 function RootNavigator() {
   const { session, isLoading } = useAuth();
@@ -166,8 +167,7 @@ function RootNavigator() {
       {!session && !SKIP_AUTH_FOR_PREVIEW ? (
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="CheckEmail" component={CheckEmailScreen} />
+          <Stack.Screen name="VerifyOtp" component={OtpScreen} />
         </>
       ) : isAdmin ? (
         <Stack.Screen name="InventoryTabs" component={InventoryTabs} />

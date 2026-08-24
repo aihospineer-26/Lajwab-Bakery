@@ -41,17 +41,6 @@ const TRENDING = [
   { label: 'Cookies', emoji: '🍪' },
 ];
 
-const CAT_COLOR: Record<string, string> = {
-  fruits: '#FFF0E6',
-  vegetables: '#E8F5E9',
-  dairy: '#E3F2FD',
-  bakery: '#FFF8E1',
-  snacks: '#FCE4EC',
-  beverages: '#E8EAF6',
-  grains: '#FBE9E7',
-  spices: '#FFEBEE',
-};
-
 /* Staggered fade+slide entrance */
 function FadeIn({
   index,

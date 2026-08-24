@@ -1,26 +1,60 @@
 import { Session } from '@supabase/supabase-js';
-import * as Linking from 'expo-linking';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+  OTP_DEMO_MODE,
+  clearDemoCode,
+  issueDemoCode,
+  matchesDemoCode,
+  toE164,
+} from '../services/otp';
 import { supabase } from '../services/supabase';
 
 type AuthContextValue = {
   session: Session | null;
   isLoading: boolean;
-  linkError: string | null;
-  clearLinkError: () => void;
-  sendMagicLink: (email: string, fullName?: string) => Promise<string | null>;
+  /* Only set in demo mode, where the code is shown on screen instead of sent. */
+  demoCode: string | null;
+  sendOtp: (mobile: string, fullName?: string) => Promise<string | null>;
+  verifyOtp: (mobile: string, token: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/* Satisfies the UI only. Services read supabase.auth.getSession() directly, so
+   they still see no session and keep writing to the preview overlay — the same
+   path the app already takes when signed out. */
+function demoSession(phone: string): Session {
+  const user = {
+    id: 'demo-' + phone,
+    phone: phone.replace('+', ''),
+    aud: 'authenticated',
+    role: 'authenticated',
+    app_metadata: {},
+    user_metadata: {},
+    created_at: new Date().toISOString(),
+  };
+  return {
+    access_token: 'demo',
+    refresh_token: 'demo',
+    token_type: 'bearer',
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    user,
+  } as unknown as Session;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [linkError, setLinkError] = useState<string | null>(null);
+  const [demoCode, setDemoCode] = useState<string | null>(null);
 
   useEffect(() => {
+    if (OTP_DEMO_MODE) {
+      setIsLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setIsLoading(false);
@@ -33,75 +67,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  /* Magic-link return leg. On web supabase-js reads the URL itself, but on
-     native nothing consumes the deep link unless we do it here — without this
-     the app opens from the email and stays signed out. */
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
+  const sendOtp = async (mobile: string, fullName?: string) => {
+    if (OTP_DEMO_MODE) {
+      setDemoCode(issueDemoCode());
+      return null;
+    }
 
-    const consumeUrl = async (url: string | null) => {
-      if (!url) return;
-
-      const { queryParams } = Linking.parse(url);
-      const fragment = url.includes('#') ? url.split('#')[1] : '';
-      const fragmentParams = new URLSearchParams(fragment);
-
-      const errorDescription =
-        (queryParams?.error_description as string | undefined) ??
-        fragmentParams.get('error_description');
-      if (errorDescription) {
-        setLinkError(errorDescription.replace(/\+/g, ' '));
-        return;
-      }
-
-      // PKCE flow returns a code to exchange
-      const code = queryParams?.code;
-      if (typeof code === 'string') {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) setLinkError(error.message);
-        return;
-      }
-
-      // Implicit flow returns the tokens directly in the fragment
-      const accessToken = fragmentParams.get('access_token');
-      const refreshToken = fragmentParams.get('refresh_token');
-      if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (error) setLinkError(error.message);
-      }
-    };
-
-    // Covers the app being launched cold by the link
-    Linking.getInitialURL().then(consumeUrl);
-    // ...and being resumed while already running
-    const subscription = Linking.addEventListener('url', ({ url }) => consumeUrl(url));
-    return () => subscription.remove();
-  }, []);
-
-  const sendMagicLink = async (email: string, fullName?: string) => {
-    setLinkError(null);
+    /* Sent as the 'sms' channel because that is what the Send SMS Hook
+       intercepts — the hook then delivers it over WhatsApp. */
     const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: Linking.createURL('/'),
-        data: fullName ? { full_name: fullName } : undefined,
-      },
+      phone: toE164(mobile),
+      options: { data: fullName ? { full_name: fullName } : undefined },
+    });
+    return error?.message ?? null;
+  };
+
+  const verifyOtp = async (mobile: string, token: string) => {
+    if (OTP_DEMO_MODE) {
+      if (!matchesDemoCode(token)) return 'That code is not right. Please check and try again.';
+      clearDemoCode();
+      setDemoCode(null);
+      setSession(demoSession(toE164(mobile)));
+      return null;
+    }
+
+    const { error } = await supabase.auth.verifyOtp({
+      phone: toE164(mobile),
+      token,
+      type: 'sms',
     });
     return error?.message ?? null;
   };
 
   const signOut = async () => {
+    clearDemoCode();
+    setDemoCode(null);
+    if (OTP_DEMO_MODE) {
+      setSession(null);
+      return;
+    }
     await supabase.auth.signOut();
   };
 
-  const clearLinkError = useCallback(() => setLinkError(null), []);
-
   return (
     <AuthContext.Provider
-      value={{ session, isLoading, linkError, clearLinkError, sendMagicLink, signOut }}
+      value={{ session, isLoading, demoCode, sendOtp, verifyOtp, signOut }}
     >
       {children}
     </AuthContext.Provider>

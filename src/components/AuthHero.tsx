@@ -9,7 +9,7 @@ type AuthHeroProps = {
   subtitle: string;
 };
 
-export function AuthHero({ emoji = '🥬', title, subtitle }: AuthHeroProps) {
+export function AuthHero({ emoji = '🎂', title, subtitle }: AuthHeroProps) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 

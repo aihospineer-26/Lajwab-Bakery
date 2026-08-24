@@ -1,3 +1,12 @@
+-- ##########################################################################
+-- ## SUPERSEDED — DO NOT RUN.
+-- ## Written for Grocwell. Conflicts with the other files here (uuid vs text
+-- ## product ids, two incompatible order_items shapes, duplicate RLS policy
+-- ## names that silently re-open orders to direct inserts).
+-- ##
+-- ## Use 00_init_lajwab.sql + 02_seed_lajwab.sql instead. See SUPABASE_SETUP.md.
+-- ##########################################################################
+
 -- Saved delivery addresses (private per signed-in user)
 create table addresses (
   id uuid primary key default gen_random_uuid(),
