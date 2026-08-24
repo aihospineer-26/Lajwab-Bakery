@@ -14,11 +14,14 @@ Janmashtami offer and 18 product photos are done.
 
 | # | Task | Who | Est. |
 |---|---|---|---|
-| 1 | **Fix narrow-width clipping** — content overflows right edge on ~360–460px phones. This is what the owner hits when he opens it. | [Me] | 30m |
+| 1 | **Product photos** — 18 of 36 still emoji. Now the most visible flaw: the editorial redesign made their absence *more* obvious, not less | [You] | — |
 | 2 | **Deploy to Vercel** — `npm run build`, then he taps a link on his own phone instead of crowding a laptop | [Me] | 15m |
 | 3 | **Real prices** — placeholders are realistic Delhi rates but wrong. Owner correcting them on the spot turns a demo into a working session | [You] | — |
-| 4 | **Product photos** — 18 of 36 still emoji, mostly Indian items no stock library has | [You] | — |
-| 5 | Phone + mock OTP login (looks real, no WhatsApp API needed) | [Me] | 30m |
+| 4 | Phone + mock OTP login (looks real, no WhatsApp API needed) | [Me] | 30m |
+
+~~Fix narrow-width clipping~~ — **there was no bug.** Headless Chrome
+enforces a ~512px minimum window on Windows, so `--window-size=430` laid out
+at 512 and cropped the screenshot to 430. The layout was always correct.
 
 **Photos:** drop `<product-id>.jpg` into `assets/products/`, then I re-run one
 generator. Ids are in [products.ts](src/data/products.ts). Missing:
@@ -139,6 +142,26 @@ be verified on localhost; web takes a different code path.
 - Push notifications
 - Dark-mode colour audit
 - Nominatim → Google Geocoding (ToS at commercial volume)
+
+---
+
+## 🎨 DESIGN — on branch `editorial-polish`
+
+Two commits moving the UI from the forked Blinkit quick-commerce look to the
+boutique-bakery style of ambrosiabakery.in / cinnamon.kitchen. **Not merged** —
+compare with `git checkout main` and merge only if you want it.
+
+- Playfair Display serif for headings, product names, prices; new `overline`
+  token for wide-tracked uppercase section labels
+- Palette desaturated to blush/cream with a terracotta accent
+- Centred wordmark masthead on cream, replacing the dark slab and the
+  "45 minutes" quick-commerce promise
+- Product grid 5-up → 2-up; category circles → large square photo tiles
+- Ghost outline buttons; Ionicons line icons in the tab bar
+- Removed: flash-sale countdown, trust-badge pills, "% OFF" stickers,
+  strikethrough MRP on the combo card
+
+Still off-style: promo banner carousel, and the emoji/photo mix (see #1).
 
 ---
 
