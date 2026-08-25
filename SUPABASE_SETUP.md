@@ -2,9 +2,11 @@
 
 Everything here is done in the Supabase dashboard. Roughly 30 minutes.
 
-**Run only two SQL files:** `supabase/00_init_lajwab.sql`, then
-`supabase/02_seed_lajwab.sql`. The other files in `supabase/` are Grocwell
-leftovers and now carry a SUPERSEDED banner — see [Why](#why-the-old-files-were-replaced).
+**Run three SQL files, in this order:** `supabase/00_init_lajwab.sql`,
+`supabase/02_seed_lajwab.sql`, then
+`supabase/migrations/002_order_details.sql`. Everything else in `supabase/` is
+a Grocwell leftover carrying a SUPERSEDED banner — see
+[Why](#why-the-old-files-were-replaced).
 
 ---
 
@@ -75,6 +77,20 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key>
 Keep `EXPO_PUBLIC_OTP_MODE=demo` until the WhatsApp hook is live, or login will
 fail — phone auth has no delivery channel yet.
 
+## 5b · Run migration 002
+
+SQL Editor → paste `supabase/migrations/002_order_details.sql` → Run one
+section at a time.
+
+Without it the app cannot record **where to deliver an order**. It also moves
+coupon pricing server-side and gates `FIRST50` to genuine first orders — before
+this, the customer saw ₹775 while the order recorded ₹1551, and the code could
+be reused forever.
+
+```sql
+select code, type, value, first_order_only from public.coupons;  -- expect 4 rows
+```
+
 ## 6 · Switch the app to the database
 
 [src/services/catalog.ts](src/services/catalog.ts) still reads the bundled
@@ -128,12 +144,7 @@ with the migration.
 
 ## What this does not cover
 
-- **Migration 002** (`delivery_address`, `payment_method`, `delivery_slot` on
-  orders) — not written, and the app doesn't reference those columns, so
-  nothing is blocked on it.
-- **Server-side coupons.** `FIRST50` is still client-side and ungated: it can be
-  applied on every order, and `place_order` ignores discounts entirely, so the
-  customer sees ₹775 while the order records ₹1551. Needs an `apply_coupon`
-  function and first-order gating inside `place_order`.
-- **Admin password login.** Staff currently sign in through the same phone OTP
-  as customers.
+- **FSSAI licence number.** Legally required for a food business and absent from
+  the app entirely.
+- **Payments.** UPI and card are selectable at checkout and wired to nothing.
+  COD is now the default. Decide COD-only or name a gateway.

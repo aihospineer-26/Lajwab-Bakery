@@ -28,14 +28,7 @@ Note the **Phone number ID** from WhatsApp Manager → API Setup — it is not t
 phone number itself. Generate a **permanent** System User access token there
 too; the default one expires in 24 hours and will silently break login.
 
-## 2 · Supabase: enable phone auth
-
-Authentication → Providers → **Phone** → enable.
-
-Leave the built-in SMS provider fields blank. Do **not** enable "Confirm phone"
-with an SMS provider — the hook below replaces it.
-
-## 3 · Deploy the Edge Function
+## 2 · Deploy the Edge Function
 
 ```bash
 supabase functions deploy whatsapp-otp --no-verify-jwt
@@ -45,7 +38,7 @@ supabase functions deploy whatsapp-otp --no-verify-jwt
 signature rather than a Supabase JWT, and the function verifies that signature
 itself.
 
-## 4 · Set the function secrets
+## 3 · Set the function secrets
 
 ```bash
 supabase secrets set \
@@ -55,7 +48,7 @@ supabase secrets set \
   WHATSAPP_TEMPLATE_LANG=en
 ```
 
-## 5 · Register the hook
+## 4 · Register the hook
 
 Authentication → **Hooks** → Send SMS hook → enable → point it at the deployed
 function URL. Supabase shows a signing secret (`v1,whsec_…`). Set it:
@@ -65,6 +58,18 @@ supabase secrets set SEND_SMS_HOOK_SECRET='v1,whsec_...'
 ```
 
 The function returns 401 on every request until this matches.
+
+## 5 · Enable phone auth — **last, not first**
+
+Authentication → Providers → **Phone** → enable.
+
+The form will not save with the SMS provider fields empty, so put placeholder
+values in them. The hook registered in step 4 intercepts the send before those
+credentials are ever read. Leaving them fake is deliberate: if the hook is ever
+disabled, login fails loudly instead of silently falling back to SMS.
+
+Do this **after** the hook is live. Enabling it earlier just leaves a phone
+provider that has no way to deliver anything.
 
 ## 6 · Point the app at the project
 

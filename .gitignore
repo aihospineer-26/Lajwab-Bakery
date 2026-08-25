@@ -49,3 +49,6 @@ dist-inventory/
 # Source contact sheets used to cut assets/products/ tiles
 image.png
 image copy.png
+
+# WhatsApp API credentials — never commit
+.env.whatsapp
