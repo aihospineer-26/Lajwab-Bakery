@@ -32,6 +32,7 @@ import { ProductDetailScreen } from './src/screens/ProductDetailScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { SavingsReportScreen } from './src/screens/SavingsReportScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
+import { TermsScreen } from './src/screens/TermsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
@@ -300,6 +301,7 @@ function RootNavigator() {
           <Stack.Screen name="Payments" component={PaymentsScreen} />
           <Stack.Screen name="SavingsReport" component={SavingsReportScreen} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen name="Terms" component={TermsScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Wallet" component={WalletScreen} />
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />

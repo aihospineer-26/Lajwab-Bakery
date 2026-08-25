@@ -16,6 +16,9 @@ type AuthContextValue = {
   demoCode: string | null;
   sendOtp: (mobile: string, fullName?: string) => Promise<string | null>;
   verifyOtp: (mobile: string, token: string) => Promise<string | null>;
+  /* Staff only. Customers never see a password — the inventory app uses this so
+     the owner is not gated behind WhatsApp OTP delivery. */
+  signInWithPassword: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 };
 
@@ -99,6 +102,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return error?.message ?? null;
   };
 
+  const signInWithPassword = async (email: string, password: string) => {
+    if (OTP_DEMO_MODE) {
+      return 'Staff sign-in needs a Supabase project. Set EXPO_PUBLIC_SUPABASE_URL and remove EXPO_PUBLIC_OTP_MODE=demo.';
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    return error?.message ?? null;
+  };
+
   const signOut = async () => {
     clearDemoCode();
     setDemoCode(null);
@@ -111,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, isLoading, demoCode, sendOtp, verifyOtp, signOut }}
+      value={{ session, isLoading, demoCode, sendOtp, verifyOtp, signInWithPassword, signOut }}
     >
       {children}
     </AuthContext.Provider>

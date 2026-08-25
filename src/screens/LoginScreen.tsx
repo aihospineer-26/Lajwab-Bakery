@@ -1,4 +1,3 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -7,7 +6,6 @@ import {
   Easing,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -120,7 +118,6 @@ export function LoginScreen({ navigation }: Props) {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(32)).current;
-  const [partnerNoticeVisible, setPartnerNoticeVisible] = useState(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -205,56 +202,19 @@ export function LoginScreen({ navigation }: Props) {
             {/* No separate sign-up: the first verified code creates the account. */}
             <Text style={styles.terms}>
               By continuing you agree to our{' '}
-              <Text style={styles.linkAccent}>Terms of Service</Text> and{' '}
-              <Text style={styles.linkAccent}>Privacy Policy</Text>.
+              <Text style={styles.linkAccent} onPress={() => navigation.navigate('Terms')}>
+                Terms of Service
+              </Text>{' '}
+              and{' '}
+              <Text style={styles.linkAccent} onPress={() => navigation.navigate('PrivacyPolicy')}>
+                Privacy Policy
+              </Text>.
             </Text>
 
-            <View style={styles.partnerDivider} />
-
-            {/* Signpost, not a role picker — role comes from the server at sign-in.
-                Becomes a Play Store deep link once the rider app is split out. */}
-            <Pressable
-              onPress={() => setPartnerNoticeVisible(true)}
-              hitSlop={8}
-              style={styles.partnerLink}
-            >
-              <MaterialCommunityIcons name="moped-outline" size={16} color={colors.textMuted} />
-              <Text style={styles.partnerText}>
-                {"Delivery partner? "}<Text style={styles.linkAccent}>Learn more</Text>
-              </Text>
-            </Pressable>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <Modal
-        visible={partnerNoticeVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPartnerNoticeVisible(false)}
-      >
-        <Pressable style={styles.sheetBackdrop} onPress={() => setPartnerNoticeVisible(false)}>
-          <Pressable style={styles.sheet} onPress={e => e.stopPropagation()}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetIcon}>
-              <MaterialCommunityIcons name="moped-outline" size={26} color={colors.primary} />
-            </View>
-            <Text style={styles.sheetTitle}>Delivery Partners</Text>
-            <Text style={styles.sheetBody}>
-              Partner accounts are set up by the Lajwab Bakery team. Sign in with the
-              mobile number you registered with and you'll go straight to your
-              deliveries — no extra step needed.
-            </Text>
-            <Text style={styles.sheetBody}>
-              Want to ride with us? Write to{' '}
-              <Text style={styles.linkAccent}>partners@lajwabbakery.in</Text>
-            </Text>
-            <Pressable style={styles.sheetButton} onPress={() => setPartnerNoticeVisible(false)}>
-              <Text style={styles.sheetButtonText}>Got it</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -323,7 +283,6 @@ function createStyles(colors: ColorPalette) {
       alignItems: 'center',
       paddingTop: spacing.xs,
     },
-    linkText: { fontSize: 14, color: colors.textMuted },
     terms: {
       fontSize: 11,
       lineHeight: 16,
@@ -340,65 +299,6 @@ function createStyles(colors: ColorPalette) {
       marginTop: -spacing.xs,
     },
 
-    partnerDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginTop: spacing.xs,
-    },
-    partnerLink: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: spacing.xs,
-    },
-    partnerText: { fontSize: 13, color: colors.textMuted },
 
-    sheetBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      justifyContent: 'flex-end',
-    },
-    sheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
-      padding: spacing.xl,
-      paddingTop: spacing.md,
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    sheetHandle: {
-      width: 38,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.border,
-      marginBottom: spacing.md,
-    },
-    sheetIcon: {
-      width: 54,
-      height: 54,
-      borderRadius: radius.full,
-      backgroundColor: colors.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.xs,
-    },
-    sheetTitle: { fontSize: 19, fontWeight: '800', color: colors.text },
-    sheetBody: {
-      fontSize: 13,
-      color: colors.textMuted,
-      textAlign: 'center',
-      lineHeight: 19,
-    },
-    sheetButton: {
-      alignSelf: 'stretch',
-      backgroundColor: colors.primary,
-      borderRadius: radius.full,
-      paddingVertical: spacing.md,
-      alignItems: 'center',
-      marginTop: spacing.md,
-    },
-    sheetButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
   });
 }

@@ -12,6 +12,7 @@ type FormInputProps = {
   keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   autoFocus?: boolean;
+  secureTextEntry?: boolean;
   /* Fixed text pinned inside the field, e.g. a +91 dialling code. */
   prefix?: string;
   maxLength?: number;
@@ -28,6 +29,7 @@ export function FormInput({
   autoFocus,
   prefix,
   maxLength,
+  secureTextEntry,
 }: FormInputProps) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -42,6 +44,7 @@ export function FormInput({
     autoCapitalize,
     autoFocus,
     maxLength,
+    secureTextEntry,
     onFocus: () => setIsFocused(true),
     onBlur: () => setIsFocused(false),
   };

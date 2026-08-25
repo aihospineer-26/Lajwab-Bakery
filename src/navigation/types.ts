@@ -22,6 +22,7 @@ export type InventoryTabParamList = {
 
 export type RootStackParamList = {
   Login: undefined;
+  InventoryLogin: undefined;
   VerifyOtp: { mobile: string; fullName?: string };
   MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
   DeliveryTabs: NavigatorScreenParams<DeliveryTabParamList> | undefined;
@@ -44,6 +45,7 @@ export type RootStackParamList = {
   Payments: undefined;
   SavingsReport: undefined;
   PrivacyPolicy: undefined;
+  Terms: undefined;
   /* Standalone inventory entry only (AppInventory.tsx) — a signed-in account
      without the admin role lands here instead of silently seeing nothing. */
   AccessDenied: undefined;

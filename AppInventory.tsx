@@ -8,12 +8,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { InventoryTabParamList, RootStackParamList } from './src/navigation/types';
-import { OtpScreen } from './src/screens/OtpScreen';
 import { InventoryAccountScreen } from './src/screens/inventory/InventoryAccountScreen';
 import { InventoryOrdersScreen } from './src/screens/inventory/InventoryOrdersScreen';
 import { InventoryProductsScreen } from './src/screens/inventory/InventoryProductsScreen';
 import { InventoryStockScreen } from './src/screens/inventory/InventoryStockScreen';
-import { LoginScreen } from './src/screens/LoginScreen';
+import { InventoryLoginScreen } from './src/screens/inventory/InventoryLoginScreen';
 import { AuthProvider, useAuth } from './src/state/AuthContext';
 import { CatalogProvider } from './src/state/CatalogContext';
 import { ThemeProvider, useTheme } from './src/state/ThemeContext';
@@ -165,10 +164,7 @@ function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       {!session && !SKIP_AUTH_FOR_PREVIEW ? (
-        <>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="VerifyOtp" component={OtpScreen} />
-        </>
+        <Stack.Screen name="InventoryLogin" component={InventoryLoginScreen} />
       ) : isAdmin ? (
         <Stack.Screen name="InventoryTabs" component={InventoryTabs} />
       ) : (
