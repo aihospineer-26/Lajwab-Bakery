@@ -11,6 +11,7 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import { RootStackParamList } from '../navigation/types';
 import { useCart } from '../state/CartContext';
 import { useCatalog } from '../state/CatalogContext';
+import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { useUserProfile } from '../state/UserProfileContext';
 import { ColorPalette, radius, spacing } from '../theme';
@@ -194,7 +195,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           <View style={styles.etaStrip}>
             <Ionicons name="time-outline" size={15} color={colors.primary} />
             <Text style={styles.etaText}>
-              Delivery in <Text style={styles.etaBold}>45 minutes</Text>
+              Delivery in <Text style={styles.etaBold}>{STORE.deliveryEta}</Text>
             </Text>
           </View>
 

@@ -11,10 +11,10 @@ import { ColorPalette, spacing } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'Faq'>;
 
 const faqs = [
-  { q: 'How fast is delivery?', a: 'Most orders arrive within 10–15 minutes of placing them, depending on your location.' },
-  { q: 'What payment methods are supported?', a: 'Cards, UPI, and cash on delivery will be supported once checkout is connected to a backend.' },
-  { q: 'Can I cancel an order?', a: 'Yes — orders can be cancelled before they are packed. This will be enabled once order tracking is live.' },
-  { q: 'Do you offer refunds for damaged items?', a: 'Yes, damaged or missing items are eligible for a refund or replacement.' },
+  { q: 'How fast is delivery?', a: "Most orders reach you the same day. Cakes and the 56 Bhog Thaali need a day of notice so they are baked fresh." },
+  { q: 'What payment methods are supported?', a: 'Cash on delivery for now. UPI and card payments are coming soon.' },
+  { q: 'Can I cancel an order?', a: 'Yes — you can cancel any time before the bakery starts packing it.' },
+  { q: 'Is everything eggless?', a: 'Yes. Every item we bake is 100% eggless and pure vegetarian.' },
 ];
 
 export function FaqScreen({ navigation }: Props) {

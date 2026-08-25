@@ -32,7 +32,7 @@ const SECTIONS = [
   },
   {
     title: 'Contact',
-    body: 'For any privacy-related questions, email us at privacy@grocewell.app or call +91 1800 123 4567.',
+    body: 'For any privacy-related question, speak to us at the bakery in Janakpuri, or use the contact options on the Help screen.',
   },
 ];
 

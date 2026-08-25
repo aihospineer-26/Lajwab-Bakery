@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
+import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
@@ -191,7 +192,7 @@ export function OrderConfirmationScreen({ navigation }: Props) {
             <Text style={styles.etaIcon}>⚡</Text>
             <View>
               <Text style={styles.etaLabel}>Estimated Arrival</Text>
-              <Text style={styles.etaTime}>10–15 minutes</Text>
+              <Text style={styles.etaTime}>{STORE.deliveryEta}</Text>
             </View>
           </View>
         )}

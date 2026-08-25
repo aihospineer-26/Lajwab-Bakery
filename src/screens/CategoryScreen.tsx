@@ -163,7 +163,6 @@ export function CategoryScreen({ route, navigation }: Props) {
 function getCategoryEmoji(name: string): string {
   const n = name.toLowerCase();
   if (n.includes('fruit')) return '🍎';
-  if (n.includes('vegetable') || n.includes('veggie')) return '🥦';
   if (n.includes('dairy') || n.includes('milk')) return '🥛';
   if (n.includes('grain') || n.includes('rice') || n.includes('bread')) return '🌾';
   if (n.includes('snack')) return '🍿';

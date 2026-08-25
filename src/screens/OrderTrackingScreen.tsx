@@ -17,6 +17,7 @@ import { isCancellable, normalizeStatus, OrderItem, OrderStatus, STATUS_LABEL } 
 import { RootStackParamList } from '../navigation/types';
 import { cancelOrder, fetchOrderById, fetchOrderItems } from '../services/orders';
 import { useAuth } from '../state/AuthContext';
+import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { confirm } from '../utils/confirm';
 import { ColorPalette, radius, spacing } from '../theme';
@@ -246,7 +247,7 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
             <Ionicons name="time-outline" size={15} color={colors.primary} />
             <View>
               <Text style={styles.etaLabel}>Estimated Arrival</Text>
-              <Text style={styles.etaTime}>10 – 15 minutes</Text>
+              <Text style={styles.etaTime}>{STORE.deliveryEta}</Text>
             </View>
           </View>
         )}

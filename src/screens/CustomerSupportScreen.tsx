@@ -3,46 +3,67 @@ import React, { useMemo } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
+import { STORE, hasEmail, hasFssai, hasPhone, hasWhatsapp } from '../data/store';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CustomerSupport'>;
 
+/* Built from STORE, and each entry drops out when its detail is unset — an
+   unfilled number must never ship as a tappable dead button. */
 const options = [
-  {
+  hasPhone && {
     id: 'call',
     emoji: '📞',
-    label: 'Call Support',
-    detail: '+91 1800 123 4567',
-    note: 'Mon–Sat, 9am–9pm',
+    label: 'Call the bakery',
+    detail: STORE.phone,
+    note: STORE.hours,
     available: true,
-    action: () => Linking.openURL('tel:+9118001234567'),
+    action: () => Linking.openURL('tel:' + STORE.phone.replace(/s/g, '')),
   },
-  {
+  hasWhatsapp && {
+    id: 'whatsapp',
+    emoji: '💬',
+    label: 'WhatsApp us',
+    detail: STORE.whatsapp,
+    note: 'Usually replies within the hour',
+    available: true,
+    action: () =>
+      Linking.openURL('https://wa.me/' + STORE.whatsapp.replace(/[^0-9]/g, '')),
+  },
+  hasEmail && {
     id: 'email',
     emoji: '✉️',
-    label: 'Email Us',
-    detail: 'support@grocewell.app',
+    label: 'Email us',
+    detail: STORE.email,
     note: 'Reply within 24 hours',
     available: true,
-    action: () => Linking.openURL('mailto:support@grocewell.app'),
+    action: () => Linking.openURL('mailto:' + STORE.email),
   },
   {
-    id: 'chat',
-    emoji: '💬',
-    label: 'Live Chat',
-    detail: 'Instant support',
-    note: 'Coming soon',
+    id: 'visit',
+    emoji: '🏪',
+    label: 'Visit the shop',
+    detail: STORE.area + ', ' + STORE.city,
+    note: STORE.hours,
     available: false,
     action: undefined,
   },
-];
+].filter(Boolean) as {
+  id: string;
+  emoji: string;
+  label: string;
+  detail: string;
+  note: string;
+  available: boolean;
+  action?: () => void;
+}[];
 
 const faqs = [
-  { q: 'My order is late', a: "Call or email support with your order ID and we'll check immediately." },
-  { q: 'Wrong item delivered', a: "Send a photo to support@grocewell.app — we'll refund or redeliver same day." },
-  { q: 'Request a refund', a: 'Refunds are processed within 24 hours back to your original payment method.' },
+  { q: 'My order is late', a: 'Call the bakery with your order number and we will check straight away.' },
+  { q: 'Wrong or damaged item', a: 'Tell us the same day with a photo and we will replace it or refund you.' },
+  { q: 'Request a refund', a: 'Orders are cash on delivery, so refunds are settled directly with the bakery.' },
 ];
 
 export function CustomerSupportScreen({ navigation }: Props) {
@@ -97,9 +118,18 @@ export function CustomerSupportScreen({ navigation }: Props) {
         {/* Response time note */}
         <View style={styles.noteCard}>
           <Text style={styles.noteText}>
-            ⚡ Average response time: <Text style={styles.noteBold}>under 5 minutes</Text> for urgent order issues.
+            ⚡ We answer during shop hours: <Text style={styles.noteBold}>{STORE.hours}</Text>.
           </Text>
         </View>
+
+        {/* Mandatory for a food business in India. Hidden until the licence
+            number is filled in, so a blank line never ships. */}
+        {hasFssai ? (
+          <Text style={styles.legal}>
+            {STORE.name} · FSSAI Lic. No. {STORE.fssai}
+            {STORE.gstin ? '  ·  GSTIN ' + STORE.gstin : ''}
+          </Text>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -220,6 +250,13 @@ function createStyles(colors: ColorPalette) {
       fontSize: 13,
       color: colors.primary,
       lineHeight: 19,
+    },
+    legal: {
+      fontSize: 11,
+      lineHeight: 16,
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginTop: spacing.lg,
     },
     noteBold: {
       fontWeight: '800',

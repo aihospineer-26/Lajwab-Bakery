@@ -20,10 +20,10 @@ const WEEKLY = [
 ];
 
 const CATEGORIES = [
-  { name: 'Fresh Vegetables', saved: 148, icon: '🥦' },
-  { name: 'Fruits', saved: 97, icon: '🍎' },
-  { name: 'Dairy', saved: 55, icon: '🥛' },
-  { name: 'Snacks', saved: 47, icon: '🍪' },
+  { name: 'Cakes', saved: 148, icon: '🎂' },
+  { name: 'Pastries', saved: 97, icon: '🍰' },
+  { name: 'Breads & Buns', saved: 55, icon: '🍞' },
+  { name: 'Cookies', saved: 47, icon: '🍪' },
 ];
 
 export function SavingsReportScreen({ navigation }: Props) {
