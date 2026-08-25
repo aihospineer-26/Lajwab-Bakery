@@ -2,6 +2,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { resolveImage } from '../../data/productImages';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -15,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Skeleton } from '../../components/Skeleton';
 import { ProductWithStock } from '../../services/catalog';
-import { LOW_STOCK_THRESHOLD, updateStock } from '../../services/inventory';
+import { LOW_STOCK_THRESHOLD, resetAllStock, updateStock } from '../../services/inventory';
 import { useCatalog } from '../../state/CatalogContext';
 import { useTheme } from '../../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../../theme';
@@ -76,6 +77,36 @@ export function InventoryStockScreen() {
     },
     [stockOf],
   );
+
+  const handleStartOfDay = useCallback(() => {
+    Alert.alert(
+      'Start of day',
+      'Mark every item sold out, then enter what you baked today. This clears all current counts.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark all sold out',
+          style: 'destructive',
+          onPress: async () => {
+            const ids = products.map((p) => p.id);
+            const zeroed: Record<string, number> = {};
+            ids.forEach((id) => {
+              zeroed[id] = 0;
+            });
+            setEdits(zeroed);
+            setDrafts({});
+            setSaveError(null);
+            try {
+              await resetAllStock(ids, 0);
+            } catch {
+              setEdits({});
+              setSaveError('Could not reset stock. Check your connection.');
+            }
+          },
+        },
+      ],
+    );
+  }, [products]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -186,9 +217,15 @@ export function InventoryStockScreen() {
             <Text style={styles.title}>Inventory</Text>
             <Text style={styles.subtitle}>{products.length} products</Text>
           </View>
-          <Pressable style={styles.refreshButton} onPress={handleRefresh} hitSlop={8}>
-            <Ionicons name="refresh" size={18} color={colors.primary} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable style={styles.dayButton} onPress={handleStartOfDay} hitSlop={8}>
+              <Ionicons name="sunny-outline" size={15} color={colors.primary} />
+              <Text style={styles.dayButtonText}>Start of day</Text>
+            </Pressable>
+            <Pressable style={styles.refreshButton} onPress={handleRefresh} hitSlop={8}>
+              <Ionicons name="refresh" size={18} color={colors.primary} />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.statsRow}>
@@ -329,6 +366,27 @@ function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
 
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    dayButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.full,
+      paddingVertical: 6,
+      paddingHorizontal: spacing.sm + 2,
+    },
+    dayButtonText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.primary,
+      letterSpacing: 0.3,
+    },
     header: {
       flexDirection: 'row',
       alignItems: 'center',

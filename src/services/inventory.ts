@@ -50,6 +50,29 @@ export async function updateStock(productId: string, stock: number): Promise<voi
   await AsyncStorage.setItem(LOCAL_STOCK_KEY, JSON.stringify(overrides));
 }
 
+/* Bakery stock is "what we baked today", not a warehouse count. The owner
+   zeroes everything at the start of the day and then enters what came out of
+   the oven. Signed in this is one statement; in preview mode it rewrites the
+   local overlay in one go rather than one write per product. */
+export async function resetAllStock(productIds: string[], value = 0): Promise<void> {
+  const next = normalize(value);
+
+  if (await hasSession()) {
+    const { error } = await supabase
+      .from('products')
+      .update({ stock: next })
+      .in('id', productIds);
+    if (error) throw error;
+    return;
+  }
+
+  const overrides = await readOverrides();
+  productIds.forEach((id) => {
+    overrides[id] = next;
+  });
+  await AsyncStorage.setItem(LOCAL_STOCK_KEY, JSON.stringify(overrides));
+}
+
 export async function clearStockOverrides(): Promise<void> {
   await AsyncStorage.removeItem(LOCAL_STOCK_KEY);
 }
