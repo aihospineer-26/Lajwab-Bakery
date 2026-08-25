@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  DeliveryAddress,
   isCancellable,
   MOCK_ORDERS,
   normalizeStatus,
   Order,
   OrderItem,
   OrderStatus,
+  PaymentMethod,
 } from '../data/orders';
 import { decrementLocalStock } from './inventory';
 import { supabase } from './supabase';
@@ -16,6 +18,12 @@ type OrderRow = {
   item_count: number;
   status: string;
   created_at: string;
+  delivery_address: DeliveryAddress | null;
+  payment_method: PaymentMethod | null;
+  delivery_slot: string | null;
+  coupon_code: string | null;
+  discount: number | null;
+  delivery_fee: number | null;
 };
 
 type OrderItemRow = {
@@ -32,6 +40,40 @@ export type NewOrderItem = {
   qty: number;
   price: number;
 };
+
+/* Everything the order needs beyond its line items. Before this existed the
+   address and payment method were dropped at the client boundary, so an order
+   reached the bakery with no delivery destination. */
+export type OrderDetails = {
+  address: DeliveryAddress;
+  paymentMethod: PaymentMethod;
+  deliverySlot: string;
+  deliveryFee: number;
+  couponCode?: string;
+  /* Preview-mode only. Signed in, place_order recomputes this server-side and
+     the client value is ignored. */
+  discount: number;
+};
+
+const ORDER_COLUMNS =
+  'id, total, item_count, status, created_at, delivery_address, payment_method, delivery_slot, coupon_code, discount, delivery_fee';
+
+function mapOrderRow(row: OrderRow): Order {
+  return {
+    id: row.id,
+    date: formatDate(row.created_at),
+    itemCount: row.item_count,
+    total: row.total,
+    status: normalizeStatus(row.status),
+    createdAt: row.created_at,
+    deliveryAddress: row.delivery_address ?? undefined,
+    paymentMethod: row.payment_method ?? undefined,
+    deliverySlot: row.delivery_slot ?? undefined,
+    couponCode: row.coupon_code ?? undefined,
+    discount: row.discount ?? undefined,
+    deliveryFee: row.delivery_fee ?? undefined,
+  };
+}
 
 const LOCAL_ORDERS_KEY = 'local_orders';
 const LOCAL_ORDER_ITEMS_KEY = 'local_order_items';
@@ -72,13 +114,14 @@ async function readLocalItems(): Promise<Record<string, OrderItem[]>> {
   return readJson<Record<string, OrderItem[]>>(LOCAL_ORDER_ITEMS_KEY, {});
 }
 
-export async function placeOrder(items: NewOrderItem[]): Promise<string> {
+export async function placeOrder(items: NewOrderItem[], details: OrderDetails): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
 
   if (!sessionData.session) {
     const id = `ORD${Math.floor(1000 + Math.random() * 8999)}`;
     const itemCount = items.reduce((sum, i) => sum + i.qty, 0);
-    const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+    const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+    const total = Math.max(subtotal - details.discount + details.deliveryFee, 0);
 
     const now = new Date().toISOString();
     const newOrder: Order = {
@@ -88,6 +131,12 @@ export async function placeOrder(items: NewOrderItem[]): Promise<string> {
       total,
       status: 'placed',
       createdAt: now,
+      deliveryAddress: details.address,
+      paymentMethod: details.paymentMethod,
+      deliverySlot: details.deliverySlot,
+      couponCode: details.couponCode,
+      discount: details.discount,
+      deliveryFee: details.deliveryFee,
     };
     const existing = await readLocalOrders();
     await writeLocalOrders([newOrder, ...existing]);
@@ -108,9 +157,17 @@ export async function placeOrder(items: NewOrderItem[]): Promise<string> {
   }
 
   // Only ids and quantities go to the server — prices are read from the
-  // products table inside place_order so a tampered client can't set its own total.
+  // products table inside place_order so a tampered client can't set its own
+  // total, and the coupon is re-validated and re-priced there too.
   const { data, error } = await supabase.rpc('place_order', {
     items: items.map(item => ({ product_id: item.productId, qty: item.qty })),
+    details: {
+      delivery_address: details.address,
+      payment_method: details.paymentMethod,
+      delivery_slot: details.deliverySlot,
+      delivery_fee: details.deliveryFee,
+      coupon_code: details.couponCode ?? null,
+    },
   });
   if (error) throw error;
   return data as string;
@@ -178,18 +235,11 @@ export async function fetchOrders(): Promise<Order[]> {
 
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, item_count, status, created_at')
+    .select(ORDER_COLUMNS)
     .order('created_at', { ascending: false });
   if (error) throw error;
 
-  return (data as OrderRow[]).map(row => ({
-    id: row.id,
-    date: formatDate(row.created_at),
-    itemCount: row.item_count,
-    total: row.total,
-    status: normalizeStatus(row.status),
-    createdAt: row.created_at,
-  }));
+  return (data as OrderRow[]).map(mapOrderRow);
 }
 
 export async function fetchOrderById(orderId: string): Promise<Order | null> {
@@ -202,21 +252,13 @@ export async function fetchOrderById(orderId: string): Promise<Order | null> {
 
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, item_count, status, created_at')
+    .select(ORDER_COLUMNS)
     .eq('id', orderId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
 
-  const row = data as OrderRow;
-  return {
-    id: row.id,
-    date: formatDate(row.created_at),
-    itemCount: row.item_count,
-    total: row.total,
-    status: normalizeStatus(row.status),
-    createdAt: row.created_at,
-  };
+  return mapOrderRow(data as OrderRow);
 }
 
 /* ---------- Staff / rider side ---------- */
@@ -234,19 +276,12 @@ export async function fetchActiveOrders(): Promise<Order[]> {
   // Readable because the orders_select policy grants staff access to all rows
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, item_count, status, created_at')
+    .select(ORDER_COLUMNS)
     .in('status', active)
     .order('created_at', { ascending: true });
   if (error) throw error;
 
-  return (data as OrderRow[]).map(row => ({
-    id: row.id,
-    date: formatDate(row.created_at),
-    itemCount: row.item_count,
-    total: row.total,
-    status: normalizeStatus(row.status),
-    createdAt: row.created_at,
-  }));
+  return (data as OrderRow[]).map(mapOrderRow);
 }
 
 /** Every order the store has ever taken, newest first — the admin ledger.
@@ -262,18 +297,11 @@ export async function fetchAllOrders(): Promise<Order[]> {
 
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, item_count, status, created_at')
+    .select(ORDER_COLUMNS)
     .order('created_at', { ascending: false });
   if (error) throw error;
 
-  return (data as OrderRow[]).map(row => ({
-    id: row.id,
-    date: formatDate(row.created_at),
-    itemCount: row.item_count,
-    total: row.total,
-    status: normalizeStatus(row.status),
-    createdAt: row.created_at,
-  }));
+  return (data as OrderRow[]).map(mapOrderRow);
 }
 
 /** Staff cancellation. Unlike cancelOrder, this is not bounded by the customer's

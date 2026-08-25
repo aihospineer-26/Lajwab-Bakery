@@ -15,6 +15,25 @@ export type Order = {
   /* Raw timestamp, kept alongside the display date so the staff queue can age
      orders. Optional because rows stored before this field was added lack it. */
   createdAt?: string;
+  /* Snapshotted at checkout, not referenced by id — editing or deleting a saved
+     address must never rewrite where a past order actually went. All optional
+     because rows stored before migration 002 lack them. */
+  deliveryAddress?: DeliveryAddress;
+  paymentMethod?: PaymentMethod;
+  deliverySlot?: string;
+  couponCode?: string;
+  discount?: number;
+  deliveryFee?: number;
+};
+
+export type PaymentMethod = 'cod' | 'upi' | 'card';
+
+export type DeliveryAddress = {
+  label: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  pincode: string;
 };
 
 export type OrderItem = {

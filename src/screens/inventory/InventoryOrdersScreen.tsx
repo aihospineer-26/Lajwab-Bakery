@@ -240,6 +240,34 @@ export function InventoryOrdersScreen() {
 
         {isExpanded && (
           <View style={styles.itemsBox}>
+            {/* Orders placed before migration 002 have no address recorded. */}
+            {order.deliveryAddress ? (
+              <View style={styles.addressBox}>
+                <View style={styles.addressHead}>
+                  <Feather name="map-pin" size={12} color={colors.primary} />
+                  <Text style={styles.addressLabel}>{order.deliveryAddress.label}</Text>
+                </View>
+                <Text style={styles.addressText}>
+                  {order.deliveryAddress.line1}
+                  {order.deliveryAddress.line2 ? ', ' + order.deliveryAddress.line2 : ''}
+                </Text>
+                <Text style={styles.addressText}>
+                  {order.deliveryAddress.city} {order.deliveryAddress.pincode}
+                </Text>
+                <View style={styles.payRow}>
+                  <Text style={styles.payTag}>
+                    {order.paymentMethod === 'cod' ? 'CASH ON DELIVERY' : (order.paymentMethod ?? '').toUpperCase()}
+                  </Text>
+                  {order.deliverySlot ? <Text style={styles.slotTag}>{order.deliverySlot}</Text> : null}
+                </View>
+                {order.discount ? (
+                  <Text style={styles.discountLine}>
+                    {order.couponCode} — ₹{order.discount} off
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
             {lines === undefined ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : lines.length === 0 ? (
@@ -549,6 +577,54 @@ function createStyles(colors: ColorPalette) {
       gap: spacing.sm,
     },
     itemsEmpty: { fontSize: 12, color: colors.textMuted },
+    addressBox: {
+      gap: 2,
+      paddingBottom: spacing.sm,
+      marginBottom: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    addressHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      marginBottom: 2,
+    },
+    addressLabel: {
+      fontSize: 11,
+      fontWeight: '800',
+      letterSpacing: 0.8,
+      color: colors.primary,
+      textTransform: 'uppercase',
+    },
+    addressText: {
+      fontSize: 12,
+      lineHeight: 17,
+      color: colors.text,
+    },
+    payRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginTop: spacing.xs,
+    },
+    payTag: {
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 0.9,
+      color: colors.textMuted,
+    },
+    slotTag: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: colors.textMuted,
+    },
+    discountLine: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.success,
+      marginTop: 2,
+    },
     itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     itemQty: { fontSize: 13, fontWeight: '800', color: colors.primary, minWidth: 28 },
     itemName: { flex: 1, fontSize: 13, color: colors.text },

@@ -15,24 +15,35 @@ import { placeOrder } from '../services/orders';
 import { DELIVERY_FEE, useCart } from '../state/CartContext';
 import { useCatalog } from '../state/CatalogContext';
 import { useLocation } from '../state/LocationContext';
+import { STORE } from '../data/store';
+import { PaymentMethod } from '../data/orders';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checkout'>;
 
 const DELIVERY_SLOTS = [
-  { id: 'asap', label: 'Express Delivery', sub: '10 – 15 minutes', icon: '⚡' },
+  { id: 'asap', label: 'As soon as possible', sub: STORE.deliveryEta, icon: '⚡' },
   { id: 'slot1', label: 'Today, 12:00 – 1:00 PM', sub: 'Standard slot', icon: '🕛' },
   { id: 'slot2', label: 'Today, 3:00 – 4:00 PM', sub: 'Standard slot', icon: '🕒' },
   { id: 'slot3', label: 'Today, 6:00 – 7:00 PM', sub: 'Evening slot', icon: '🌇' },
 ];
 
-type PaymentMethod = { id: string; label: string; sub: string; icon: string };
+type PaymentOption = {
+  id: PaymentMethod;
+  label: string;
+  sub: string;
+  icon: string;
+  /* Shown but not selectable until Razorpay is wired up. Kept visible rather
+     than deleted so the customer can see online payment is coming, and so the
+     rows are already in place when it lands. */
+  comingSoon?: boolean;
+};
 
-const PAYMENT_METHODS: PaymentMethod[] = [
-  { id: 'upi', label: 'UPI', sub: 'GPay, PhonePe, Paytm & more', icon: '📲' },
-  { id: 'card', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, RuPay', icon: '💳' },
+const PAYMENT_METHODS: PaymentOption[] = [
   { id: 'cod', label: 'Cash on Delivery', sub: 'Pay when your order arrives', icon: '💵' },
+  { id: 'upi', label: 'UPI', sub: 'GPay, PhonePe, Paytm', icon: '📲', comingSoon: true },
+  { id: 'card', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, RuPay', icon: '💳', comingSoon: true },
 ];
 
 export function CheckoutScreen({ navigation }: Props) {
@@ -52,7 +63,7 @@ export function CheckoutScreen({ navigation }: Props) {
   const { address } = useLocation();
 
   const [selectedSlot, setSelectedSlot] = useState('asap');
-  const [selectedPayment, setSelectedPayment] = useState('upi');
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>('cod');
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,7 +87,21 @@ export function CheckoutScreen({ navigation }: Props) {
         qty: quantities[p.id] ?? 0,
         price: p.price,
       }));
-      await placeOrder(items);
+      const slot = DELIVERY_SLOTS.find(sl => sl.id === selectedSlot);
+      await placeOrder(items, {
+        address: {
+          label: address.label,
+          line1: address.line1,
+          line2: address.line2,
+          city: address.city,
+          pincode: address.pincode,
+        },
+        paymentMethod: selectedPayment,
+        deliverySlot: slot?.label ?? selectedSlot,
+        deliveryFee,
+        couponCode: appliedCoupon?.code,
+        discount,
+      });
       await refetchProducts();
       clearCart();
       navigation.navigate('OrderConfirmation');
@@ -140,10 +165,16 @@ export function CheckoutScreen({ navigation }: Props) {
           <View style={styles.slotList}>
             {PAYMENT_METHODS.map(method => {
               const active = selectedPayment === method.id;
+              const disabled = method.comingSoon === true;
               return (
                 <Pressable
                   key={method.id}
-                  style={[styles.slotRow, active && styles.slotRowActive]}
+                  disabled={disabled}
+                  style={[
+                    styles.slotRow,
+                    active && styles.slotRowActive,
+                    disabled && styles.slotRowDisabled,
+                  ]}
                   onPress={() => setSelectedPayment(method.id)}
                 >
                   <Text style={styles.slotIcon}>{method.icon}</Text>
@@ -151,9 +182,13 @@ export function CheckoutScreen({ navigation }: Props) {
                     <Text style={[styles.slotLabel, active && styles.slotLabelActive]}>{method.label}</Text>
                     <Text style={styles.slotSub}>{method.sub}</Text>
                   </View>
-                  <View style={[styles.radio, active && styles.radioActive]}>
-                    {active && <View style={styles.radioDot} />}
-                  </View>
+                  {disabled ? (
+                    <Text style={styles.comingSoon}>SOON</Text>
+                  ) : (
+                    <View style={[styles.radio, active && styles.radioActive]}>
+                      {active && <View style={styles.radioDot} />}
+                    </View>
+                  )}
                 </Pressable>
               );
             })}
@@ -268,6 +303,15 @@ function createStyles(colors: ColorPalette) {
       gap: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    slotRowDisabled: {
+      opacity: 0.45,
+    },
+    comingSoon: {
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 1.2,
+      color: colors.textMuted,
     },
     slotRowActive: { backgroundColor: colors.primaryLight },
     slotIcon: { fontSize: 20 },
