@@ -283,6 +283,16 @@ export function InventoryOrdersScreen() {
                 </View>
               ))
             )}
+
+            {lines && lines.some((l) => l.productId === 'lb-thaali-56') ? (
+              <View style={styles.giftRow}>
+                <Feather name="gift" size={12} color={colors.primary} />
+                <Text style={styles.giftText}>
+                  Include {lines.filter((l) => l.productId === 'lb-thaali-56')[0].qty}{' '}
+                  complimentary bansuri
+                </Text>
+              </View>
+            ) : null}
           </View>
         )}
 
@@ -320,12 +330,24 @@ export function InventoryOrdersScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenContainer>
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.dateLine}>{todayLabel()}</Text>
             <Text style={styles.title}>Orders</Text>
-            <Text style={styles.subtitle}>
-              {todayStats.pending} awaiting action
-              {tab === 'live' ? ' · auto-refreshing' : ''}
-            </Text>
+            <View style={styles.subtitleRow}>
+              {todayStats.pending > 0 ? (
+                <View style={styles.pendingPill}>
+                  <View style={styles.pendingDot} />
+                  <Text style={styles.pendingPillText}>
+                    {todayStats.pending} awaiting action
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.subtitle}>Nothing waiting</Text>
+              )}
+              {tab === 'live' ? (
+                <Text style={styles.subtitle}>· auto-refreshing</Text>
+              ) : null}
+            </View>
           </View>
           <Pressable style={styles.refreshButton} onPress={handleRefresh} hitSlop={8}>
             <Feather name="refresh-cw" size={16} color={colors.primary} />
@@ -333,13 +355,14 @@ export function InventoryOrdersScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          <StatTile value={String(todayStats.count)} label="Orders today" colors={colors} />
-          <StatTile value={`₹${todayStats.revenue}`} label="Revenue today" colors={colors} />
+          <StatTile icon="shopping-bag" value={String(todayStats.count)} label="Orders today" colors={colors} />
+          <StatTile icon="trending-up" value={`₹${todayStats.revenue}`} label="Revenue today" colors={colors} />
           <StatTile
+            icon="clock"
             value={String(todayStats.pending)}
             label="In queue"
             colors={colors}
-            tone={todayStats.pending > 0 ? colors.accent : undefined}
+            active={todayStats.pending > 0}
           />
         </View>
 
@@ -390,7 +413,7 @@ export function InventoryOrdersScreen() {
             data={visible}
             keyExtractor={(item) => item.id}
             renderItem={renderOrder}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, visible.length === 0 && styles.listEmpty]}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -441,40 +464,109 @@ function statusTone(status: OrderStatus, colors: ColorPalette) {
   return { backgroundColor: colors.primaryLight };
 }
 
+/* A queue of zero and a queue of fifteen looked identical before -- the whole
+   tile now changes, so the owner reads it at a glance rather than parsing digits. */
 function StatTile({
+  icon,
   value,
   label,
   colors,
-  tone,
+  active,
 }: {
+  icon: React.ComponentProps<typeof Feather>['name'];
   value: string;
   label: string;
   colors: ColorPalette;
-  tone?: string;
+  active?: boolean;
 }) {
   return (
     <View
       style={{
         flex: 1,
-        backgroundColor: colors.surface,
+        backgroundColor: active ? colors.primaryLight : colors.surface,
         borderRadius: radius.lg,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: active ? colors.primary : colors.border,
         paddingVertical: spacing.md,
+        paddingHorizontal: spacing.xs,
         alignItems: 'center',
-        gap: 2,
+        gap: 3,
       }}
     >
-      <Text style={{ fontSize: 17, fontWeight: '900', color: tone ?? colors.text }}>{value}</Text>
-      <Text style={{ fontSize: 11, color: colors.textMuted, fontWeight: '600' }}>{label}</Text>
+      <Feather name={icon} size={13} color={active ? colors.primary : colors.textMuted} />
+      <Text
+        style={{
+          fontSize: 19,
+          fontWeight: '900',
+          color: active ? colors.primary : colors.text,
+          fontVariant: ['tabular-nums'],
+          letterSpacing: -0.4,
+        }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
+        {value}
+      </Text>
+      <Text
+        style={{ fontSize: 10.5, color: colors.textMuted, fontWeight: '600', textAlign: 'center' }}
+      >
+        {label}
+      </Text>
     </View>
   );
+}
+
+function todayLabel(): string {
+  return new Date().toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
 }
 
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
 
+    dateLine: {
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+      color: colors.primary,
+      marginBottom: 1,
+    },
+    subtitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 3,
+      flexWrap: 'wrap',
+    },
+    pendingPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: colors.primaryLight,
+      borderRadius: radius.full,
+      paddingVertical: 3,
+      paddingHorizontal: spacing.sm,
+    },
+    pendingDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.primary,
+    },
+    pendingPillText: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: colors.primary,
+    },
+    listEmpty: {
+      flexGrow: 1,
+      justifyContent: 'center',
+    },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -624,6 +716,20 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '700',
       color: colors.success,
       marginTop: 2,
+    },
+    giftRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: spacing.xs,
+      paddingTop: spacing.xs,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    giftText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.primary,
     },
     itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     itemQty: { fontSize: 13, fontWeight: '800', color: colors.primary, minWidth: 28 },

@@ -213,9 +213,16 @@ export function InventoryStockScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenContainer>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Inventory</Text>
-            <Text style={styles.subtitle}>{products.length} products</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.eyebrow}>Today's counts</Text>
+            <Text style={styles.title}>Stock</Text>
+            <Text style={styles.subtitle}>
+              {counts.out > 0
+                ? counts.out + ' sold out · ' + counts.low + ' running low'
+                : counts.low > 0
+                  ? counts.low + ' running low'
+                  : 'Everything in stock'}
+            </Text>
           </View>
           <View style={styles.headerActions}>
             <Pressable style={styles.dayButton} onPress={handleStartOfDay} hitSlop={8}>
@@ -386,6 +393,14 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '700',
       color: colors.primary,
       letterSpacing: 0.3,
+    },
+    eyebrow: {
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+      color: colors.primary,
+      marginBottom: 1,
     },
     header: {
       flexDirection: 'row',

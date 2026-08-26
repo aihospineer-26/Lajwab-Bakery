@@ -187,9 +187,12 @@ export function InventoryProductsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenContainer>
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.eyebrow}>Catalogue</Text>
             <Text style={styles.title}>Products</Text>
-            <Text style={styles.subtitle}>{products.length} in catalogue</Text>
+            <Text style={styles.subtitle}>
+              {products.length} item{products.length === 1 ? '' : 's'} on the menu
+            </Text>
           </View>
           <Pressable style={styles.addButton} onPress={() => setModalProduct('new')}>
             <Feather name="plus" size={16} color={colors.textOnPrimary} />
@@ -271,7 +274,7 @@ export function InventoryProductsScreen() {
             data={visible}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, visible.length === 0 && styles.listEmpty]}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.stateWrap}>
@@ -526,6 +529,15 @@ function createStyles(colors: ColorPalette) {
     bannerText: { flex: 1, fontSize: 12, color: colors.danger, fontWeight: '600' },
 
     listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.sm },
+    listEmpty: { flexGrow: 1, justifyContent: 'center' },
+    eyebrow: {
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+      color: colors.primary,
+      marginBottom: 1,
+    },
 
     row: {
       flexDirection: 'row',
