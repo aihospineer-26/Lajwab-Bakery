@@ -253,8 +253,6 @@ function DeliveryTabs() {
 // Set to `false` when you want to test the login flow locally.
 /* Dev builds skip the login wall so every screen stays reachable. Set
    EXPO_PUBLIC_SHOW_AUTH=1 to exercise the real OTP flow while developing. */
-const SKIP_AUTH_FOR_PREVIEW = __DEV__ && process.env.EXPO_PUBLIC_SHOW_AUTH !== '1';
-
 function RootNavigator() {
   const { session, isLoading } = useAuth();
   const { mode } = useAppMode();
@@ -276,16 +274,16 @@ function RootNavigator() {
         <Stack.Screen name="Onboarding">
           {props => <OnboardingScreen {...props} onDone={() => setNeedsOnboarding(false)} />}
         </Stack.Screen>
-      ) : !session && !SKIP_AUTH_FOR_PREVIEW ? (
-        <>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="VerifyOtp" component={OtpScreen} />
-        </>
       ) : mode === 'delivery' ? (
         <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
       ) : (
         <>
           <Stack.Screen name="MainTabs" component={MainTabs} />
+          {/* Browsing needs no account -- the catalog is public. Sign-in is
+              required at checkout instead, so a delivery problem with the OTP
+              costs one order rather than locking every customer out. */}
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="VerifyOtp" component={OtpScreen} />
           <Stack.Screen name="Category" component={CategoryScreen} />
           <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
           <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />

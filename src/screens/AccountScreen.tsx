@@ -32,7 +32,7 @@ const SETTINGS = [
 export function AccountScreen({ navigation }: Props) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { signOut } = useAuth();
+  const { signOut, session } = useAuth();
   const { profile } = useUserProfile();
 
   const displayName = profile.name;
@@ -102,10 +102,16 @@ export function AccountScreen({ navigation }: Props) {
           ))}
         </View>
 
-        {/* Log Out */}
-        <Pressable style={styles.logoutBtn} onPress={signOut}>
-          <Text style={styles.logoutText}>Log Out</Text>
-        </Pressable>
+        {/* Browsing works signed out, so this doubles as the way in. */}
+        {session ? (
+          <Pressable style={styles.logoutBtn} onPress={signOut}>
+            <Text style={styles.logoutText}>Log Out</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.signInBtn} onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.signInText}>Sign in</Text>
+          </Pressable>
+        )}
 
         {/* Farm Partnership footer */}
         <View style={styles.farmCard}>
@@ -262,6 +268,19 @@ function createStyles(colors: ColorPalette) {
       borderBottomColor: colors.border,
     },
     /* ── Log Out ── */
+    signInBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: radius.full,
+      paddingVertical: spacing.md,
+      alignItems: 'center',
+      marginTop: spacing.lg,
+    },
+    signInText: {
+      color: colors.textOnPrimary,
+      fontSize: 15,
+      fontWeight: '800',
+      letterSpacing: 0.3,
+    },
     logoutBtn: {
       borderWidth: 1.5,
       borderColor: colors.danger,
