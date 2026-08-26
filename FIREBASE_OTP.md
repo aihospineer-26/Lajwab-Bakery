@@ -91,6 +91,50 @@ do not set them by hand.
 
 ---
 
+## 2b · The website
+
+Firebase covers the web deploy too, through a different SDK. Native uses
+`@react-native-firebase/auth`; web uses the Firebase **JS SDK** with an
+invisible reCAPTCHA. Both mint a token with identical claims, so
+`firebase-otp-bridge` handles either without a branch.
+
+### Register a Web app
+
+Firebase console → Project settings → Your apps → **Web** (the `</>` icon).
+
+Copy the four values it shows into `.env.local`:
+
+```
+EXPO_PUBLIC_FIREBASE_API_KEY=
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=
+EXPO_PUBLIC_FIREBASE_APP_ID=
+```
+
+These are public identifiers, not secrets — they ship inside every client.
+Restricting them is done in the console, not by hiding them.
+
+### Authorize your domains
+
+Authentication → Settings → **Authorized domains**.
+
+`localhost` is there by default. **Add your Vercel domain**, or sign-in fails
+on the live site with `auth/unauthorized-domain` while working perfectly on
+your machine.
+
+### reCAPTCHA
+
+Web phone auth requires it — Firebase's anti-abuse, not optional. The app uses
+invisible mode, so most customers see nothing; Google occasionally shows a
+challenge. Nothing to configure: the container element is created for you in
+`src/services/firebaseOtp.ts`.
+
+⚠️ Web needs no `google-services.json` and no SHA-1. Those are native-only.
+Equally, the four values above do nothing for the APK. **Cover both and you
+need both.**
+
+---
+
 ## 3 · Build a dev client
 
 `@react-native-firebase/auth` is a native module, so **Expo Go stops working.**
@@ -174,7 +218,9 @@ be stale.
 | `Could not verify that sign-in` | Check the function logs; the detail is there, not in the app |
 | `Not a phone sign-in` | Token came from a different provider |
 | Works in dev, fails in production | Production signing key's SHA-1 was never added |
-| `Phone sign-in is only available in the app` | Running on web — Firebase native has no web build here. Use `whatsapp` for the web deploy |
+| `Phone sign-in is not configured for the website yet` | The four `EXPO_PUBLIC_FIREBASE_*` values are missing from `.env.local` |
+| `This website is not authorised for sign-in yet` | The domain is not in Authentication → Settings → Authorized domains |
+| reCAPTCHA challenge appears every time | Normal when Google is unsure. It still completes; it is not a fault |
 
 ---
 

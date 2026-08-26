@@ -162,10 +162,40 @@ if (url && key) {
     const needed =
       channel === 'firebase' ? 'firebase-otp-bridge' : channel === 'demo' ? null : 'whatsapp-otp';
 
+    if (channel === 'firebase') {
+      /* Native reads google-services.json; the website reads these four. Both
+         are needed to cover the APK and the web deploy at once. */
+      const WEB_KEYS = [
+        'EXPO_PUBLIC_FIREBASE_API_KEY',
+        'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
+        'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
+        'EXPO_PUBLIC_FIREBASE_APP_ID',
+      ];
+      const missing = WEB_KEYS.filter((k) => !env?.[k]);
+      if (missing.length === 0) {
+        otp.ok('Firebase web config is set -- the website can sign people in');
+      } else {
+        otp.fail(
+          'Firebase web config missing (' + missing.length + ' of 4) -- website login will not work',
+          'Firebase console -> Project settings -> Your apps -> Web app, then fill these in .env.local: ' +
+            missing.join(', '),
+        );
+      }
+
+      if (fs.existsSync(path.join(ROOT, 'google-services.json'))) {
+        otp.ok('google-services.json present -- the APK can sign people in');
+      } else {
+        otp.fail(
+          'google-services.json missing -- phone login fails silently in the APK',
+          'download it from the Firebase console into the project root, and add your SHA-1 there first',
+        );
+      }
+    }
+
     if (!needed) {
       otp.warn(
         'channel is demo -- no real codes are sent',
-        'set EXPO_PUBLIC_OTP_CHANNEL=whatsapp for launch',
+        'set EXPO_PUBLIC_OTP_CHANNEL=firebase or whatsapp for launch',
       );
     } else {
       const fn = await fetch(url + '/functions/v1/' + needed, {
