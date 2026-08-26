@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import WebView from 'react-native-webview';
 import { radius } from '../theme';
 
@@ -54,6 +54,20 @@ export function MapPicker({ lat, lng, onChange }: MapPickerProps) {
   const initial = useRef({ lat, lng });
   const html = useMemo(() => buildMapHtml(initial.current.lat, initial.current.lng), []);
 
+  /* react-native-webview has no dependable web build, and the customer app is
+     also served as a website. Falling back keeps the address form usable there
+     -- "Use my current location" still fills the fields, only the pin is lost. */
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[styles.wrap, styles.webFallback]}>
+        <Text style={styles.webFallbackText}>
+          Pin-drop is available in the app. Use your current location or type the
+          address below.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wrap}>
       <WebView
@@ -81,5 +95,18 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
+  },
+  webFallback: {
+    height: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    backgroundColor: '#F4E8E0',
+  },
+  webFallbackText: {
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+    color: '#947D6E',
   },
 });

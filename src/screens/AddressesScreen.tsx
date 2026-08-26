@@ -6,9 +6,11 @@ import { AppHeader } from '../components/AppHeader';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { MapPicker } from '../components/MapPicker';
 import { Address } from '../data/addresses';
 import { SERVICE_AREA_LABEL, validatePincode } from '../data/serviceability';
 import { RootStackParamList } from '../navigation/types';
+import { getCurrentCoords, reverseGeocode } from '../services/geocoding';
 import { useLocation } from '../state/LocationContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
@@ -28,6 +30,31 @@ export function AddressesScreen({ navigation }: Props) {
   const [pincode, setPincode] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+
+  /* Janakpuri, so the map opens somewhere useful rather than mid-ocean when
+     the customer drops the pin without using GPS first. */
+  const FALLBACK_COORDS = { lat: 28.6219, lng: 77.0878 };
+
+  const handleUseLocation = async () => {
+    setFormError(null);
+    setIsLocating(true);
+    try {
+      const found = await getCurrentCoords();
+      setCoords(found);
+      const place = await reverseGeocode(found.lat, found.lng);
+      if (place.line1) setLine1(place.line1);
+      if (place.city) setCity(place.city);
+      if (place.pincode) setPincode(place.pincode);
+    } catch (err) {
+      setFormError(
+        err instanceof Error ? err.message : 'Could not find your location. Enter it by hand.',
+      );
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   const resetForm = () => {
     setLabel('');
@@ -35,6 +62,7 @@ export function AddressesScreen({ navigation }: Props) {
     setCity('');
     setPincode('');
     setFormError(null);
+    setCoords(null);
   };
 
   const handleSave = async () => {
@@ -55,6 +83,8 @@ export function AddressesScreen({ navigation }: Props) {
         line1: line1.trim(),
         city: city.trim(),
         pincode: pincode.trim(),
+        lat: coords?.lat,
+        lng: coords?.lng,
         isDefault: addresses.length === 0,
       });
       resetForm();
@@ -111,6 +141,31 @@ export function AddressesScreen({ navigation }: Props) {
         {isAdding ? (
           <Card style={styles.formCard}>
             <Text style={typography.subheading}>New address</Text>
+
+            <Pressable
+              style={styles.locateBtn}
+              onPress={handleUseLocation}
+              disabled={isLocating}
+            >
+              {isLocating ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={styles.locateText}>Use my current location</Text>
+              )}
+            </Pressable>
+
+            {/* Rooftop accuracy matters in Janakpuri's lanes, where the street
+                name alone often is not enough to find a door. */}
+            <MapPicker
+              lat={coords?.lat ?? FALLBACK_COORDS.lat}
+              lng={coords?.lng ?? FALLBACK_COORDS.lng}
+              onChange={(lat, lng) => setCoords({ lat, lng })}
+            />
+            <Text style={styles.mapHint}>
+              {coords
+                ? 'Drag the pin to your exact door.'
+                : 'Tap the map or use your location to drop a pin.'}
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="Label (e.g. Home, Work)"
@@ -198,6 +253,25 @@ function createStyles(colors: ColorPalette) {
     },
     formCard: {
       gap: spacing.sm,
+    },
+    locateBtn: {
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: radius.full,
+      paddingVertical: spacing.sm + 2,
+      alignItems: 'center',
+      marginBottom: spacing.xs,
+    },
+    locateText: {
+      color: colors.primary,
+      fontWeight: '700',
+      fontSize: 13,
+    },
+    mapHint: {
+      fontSize: 11,
+      color: colors.textMuted,
+      marginTop: -spacing.xs,
+      marginBottom: spacing.xs,
     },
     input: {
       backgroundColor: colors.surfaceMuted,
