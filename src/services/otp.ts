@@ -1,11 +1,25 @@
 import { isSupabaseConfigured } from './supabase';
 
-/* Demo mode runs the whole OTP flow on the device: nothing is sent over
-   WhatsApp and the code is shown on screen. It switches on by itself until a
-   Supabase project is configured, so the flow can be demonstrated before the
-   Send SMS Hook is live. */
-export const OTP_DEMO_MODE =
-  process.env.EXPO_PUBLIC_OTP_MODE === 'demo' || !isSupabaseConfigured;
+/* How the code reaches the customer. The screens are identical either way --
+   only delivery differs -- so moving to SMS once DLT clears is a config change.
+ *
+ *   demo      generated and shown on screen; no backend needed
+ *   whatsapp  Supabase mints the code, the Send SMS Hook delivers it
+ *   firebase  Firebase owns send and verify, then we swap its token for a
+ *             Supabase session (see supabase/functions/firebase-otp-bridge)
+ */
+export type OtpChannel = 'demo' | 'whatsapp' | 'firebase';
+
+function resolveChannel(): OtpChannel {
+  if (process.env.EXPO_PUBLIC_OTP_MODE === 'demo') return 'demo';
+  if (!isSupabaseConfigured) return 'demo';
+  const channel = process.env.EXPO_PUBLIC_OTP_CHANNEL;
+  if (channel === 'firebase' || channel === 'whatsapp' || channel === 'demo') return channel;
+  return 'whatsapp';
+}
+
+export const OTP_CHANNEL: OtpChannel = resolveChannel();
+export const OTP_DEMO_MODE = OTP_CHANNEL === 'demo';
 
 export const OTP_LENGTH = 6;
 export const RESEND_SECONDS = 30;
@@ -45,3 +59,10 @@ export function matchesDemoCode(token: string): boolean {
 export function clearDemoCode(): void {
   issuedCode = null;
 }
+
+/** How the customer is told the code will arrive. */
+export const CHANNEL_LABEL: Record<OtpChannel, string> = {
+  demo: 'on screen',
+  whatsapp: 'on WhatsApp',
+  firebase: 'by SMS',
+};

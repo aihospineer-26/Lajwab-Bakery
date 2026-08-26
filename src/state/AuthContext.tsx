@@ -1,6 +1,12 @@
 import { Session } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
+  clearFirebaseOtp,
+  sendFirebaseOtp,
+  verifyFirebaseOtp,
+} from '../services/firebaseOtp';
+import {
+  OTP_CHANNEL,
   OTP_DEMO_MODE,
   clearDemoCode,
   issueDemoCode,
@@ -76,6 +82,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
 
+    /* Firebase owns its own send and verify; Supabase never mints a code in
+       this mode. See services/firebaseOtp.ts for why. */
+    if (OTP_CHANNEL === 'firebase') {
+      return sendFirebaseOtp(mobile);
+    }
+
     /* Sent as the 'sms' channel because that is what the Send SMS Hook
        intercepts — the hook then delivers it over WhatsApp. */
     const { error } = await supabase.auth.signInWithOtp({
@@ -92,6 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setDemoCode(null);
       setSession(demoSession(toE164(mobile)));
       return null;
+    }
+
+    /* Verified by Firebase, then exchanged for a Supabase session -- the
+       onAuthStateChange listener picks it up like any other sign-in. */
+    if (OTP_CHANNEL === 'firebase') {
+      return verifyFirebaseOtp(token);
     }
 
     const { error } = await supabase.auth.verifyOtp({
@@ -112,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     clearDemoCode();
+    clearFirebaseOtp();
     setDemoCode(null);
     if (OTP_DEMO_MODE) {
       setSession(null);

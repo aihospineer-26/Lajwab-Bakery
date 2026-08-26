@@ -19,6 +19,7 @@ import { Button } from '../components/Button';
 import { FormInput } from '../components/FormInput';
 import { RootStackParamList } from '../navigation/types';
 import { digitsOnly, formatMobile, isValidMobile } from '../services/otp';
+import { CHANNEL_LABEL, OTP_CHANNEL } from '../services/otp';
 import { useAuth } from '../state/AuthContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
@@ -180,7 +181,7 @@ export function LoginScreen({ navigation }: Props) {
             <Text style={styles.formHeading}>Log in or sign up</Text>
 
             <Text style={styles.formSub}>
-              We'll send a 6-digit code on WhatsApp to confirm it's you.
+              We'll send a 6-digit code {CHANNEL_LABEL[OTP_CHANNEL]} to confirm it's you.
             </Text>
 
             <FormInput

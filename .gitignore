@@ -52,3 +52,7 @@ image copy.png
 
 # WhatsApp API credentials — never commit
 .env.whatsapp
+
+# Firebase project config (identifies the app, ships inside it anyway)
+google-services.json
+GoogleService-Info.plist
