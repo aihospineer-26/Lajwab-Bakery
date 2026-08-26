@@ -179,6 +179,20 @@ export function clearFirebaseOtp(): void {
 /* Firebase error codes are not customer-readable. */
 function friendly(err: unknown): string {
   const code = (err as { code?: string })?.code ?? '';
+
+  /* The customer gets a calm sentence; whoever is debugging gets the real code.
+     Without this an unmapped failure reads as "try again" forever -- an SMS
+     region policy blocking India looked identical to a flaky network. */
+  if (__DEV__) {
+    console.warn('[firebase-otp]', code || 'no code', (err as { message?: string })?.message ?? err);
+  }
+
+  if (code.includes('operation-not-allowed')) {
+    return 'Phone sign-in is not available yet. Please contact the bakery.';
+  }
+  if (code.includes('billing-not-enabled') || code.includes('quota-exceeded')) {
+    return 'Sign-in is temporarily unavailable. Please try again later.';
+  }
   if (code.includes('invalid-phone-number')) return 'That mobile number does not look right.';
   if (code.includes('too-many-requests')) return 'Too many attempts. Please try again later.';
   if (code.includes('invalid-verification-code')) return 'That code is not right. Please check and try again.';

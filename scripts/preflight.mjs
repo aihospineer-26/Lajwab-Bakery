@@ -186,6 +186,43 @@ if (url && key) {
         );
       }
 
+      /* Firebase ships new projects with an SMS region policy that blocks
+         India, and nothing in the console flags it -- phone sign-in reads as
+         enabled while every send fails. The dummy reCAPTCHA token is rejected
+         before any SMS is sent, so this probe costs nothing and never texts
+         anyone; we only care which error comes back. */
+      if (env?.EXPO_PUBLIC_FIREBASE_API_KEY) {
+        try {
+          const res = await fetch(
+            'https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=' +
+              env.EXPO_PUBLIC_FIREBASE_API_KEY,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phoneNumber: '+919999999999', recaptchaToken: 'preflight' }),
+            },
+          );
+          const msg = (await res.json())?.error?.message ?? '';
+          if (/region/i.test(msg)) {
+            otp.fail(
+              '[web] Firebase is blocking SMS to India -- no customer can receive a code',
+              'Firebase console -> Authentication -> Settings -> SMS region policy -> Allow -> add India',
+            );
+          } else if (/OPERATION_NOT_ALLOWED/.test(msg)) {
+            otp.fail(
+              '[web] Firebase phone sign-in is switched off',
+              'Firebase console -> Authentication -> Sign-in method -> Phone -> Enable',
+            );
+          } else {
+            /* CAPTCHA_CHECK_FAILED and friends mean the provider is live and
+               got as far as validating our deliberately fake token. */
+            otp.ok('[web] Firebase accepts SMS for India');
+          }
+        } catch {
+          otp.warn('could not reach Google to check the SMS region policy', 'check again when online');
+        }
+      }
+
       if (fs.existsSync(path.join(ROOT, 'google-services.json'))) {
         otp.ok('[apk] google-services.json present -- the APK can sign people in');
       } else {
