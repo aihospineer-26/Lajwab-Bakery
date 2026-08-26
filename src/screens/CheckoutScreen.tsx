@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -17,17 +17,25 @@ import { useCatalog } from '../state/CatalogContext';
 import { useLocation } from '../state/LocationContext';
 import { STORE } from '../data/store';
 import { PaymentMethod } from '../data/orders';
+import { dayLabel, leadTimeForCart, leadTimeLabel } from '../data/preOrder';
+import { useAuth } from '../state/AuthContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checkout'>;
 
-const DELIVERY_SLOTS = [
-  { id: 'asap', label: 'As soon as possible', sub: STORE.deliveryEta, icon: '⚡' },
-  { id: 'slot1', label: 'Today, 12:00 – 1:00 PM', sub: 'Standard slot', icon: '🕛' },
-  { id: 'slot2', label: 'Today, 3:00 – 4:00 PM', sub: 'Standard slot', icon: '🕒' },
-  { id: 'slot3', label: 'Today, 6:00 – 7:00 PM', sub: 'Evening slot', icon: '🌇' },
-];
+function buildSlots(leadDays: number) {
+  const day = dayLabel(leadDays);
+  const timed = [
+    { id: 'slot1', label: day + ', 12:00 - 1:00 PM', sub: 'Standard slot', icon: '🕛' },
+    { id: 'slot2', label: day + ', 3:00 - 4:00 PM', sub: 'Standard slot', icon: '🕒' },
+    { id: 'slot3', label: day + ', 6:00 - 7:00 PM', sub: 'Evening slot', icon: '🌇' },
+  ];
+  /* Express is dropped entirely when something in the cart needs notice --
+     offering it would be promising what the bakery cannot bake in time. */
+  if (leadDays > 0) return timed;
+  return [{ id: 'asap', label: 'As soon as possible', sub: STORE.deliveryEta, icon: '⚡' }, ...timed];
+}
 
 type PaymentOption = {
   id: PaymentMethod;
@@ -60,9 +68,22 @@ export function CheckoutScreen({ navigation }: Props) {
     grandTotal,
   } = useCart();
   const { products, refetchProducts } = useCatalog();
+  const { session } = useAuth();
   const { address } = useLocation();
 
-  const [selectedSlot, setSelectedSlot] = useState('asap');
+  const leadDays = useMemo(
+    () => leadTimeForCart(Object.keys(quantities).filter((id) => (quantities[id] ?? 0) > 0)),
+    [quantities],
+  );
+  const slots = useMemo(() => buildSlots(leadDays), [leadDays]);
+
+  const [selectedSlot, setSelectedSlot] = useState(slots[0].id);
+
+  /* Adding a pre-order item removes the express slot, so a previously chosen
+     express selection has to fall back rather than silently persist. */
+  useEffect(() => {
+    if (!slots.some((sl) => sl.id === selectedSlot)) setSelectedSlot(slots[0].id);
+  }, [slots, selectedSlot]);
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>('cod');
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +99,10 @@ export function CheckoutScreen({ navigation }: Props) {
       setError('Please choose a delivery address first.');
       return;
     }
+    if (!session) {
+      navigation.navigate('Login');
+      return;
+    }
     setError(null);
     setIsPlacing(true);
     try {
@@ -87,7 +112,7 @@ export function CheckoutScreen({ navigation }: Props) {
         qty: quantities[p.id] ?? 0,
         price: p.price,
       }));
-      const slot = DELIVERY_SLOTS.find(sl => sl.id === selectedSlot);
+      const slot = slots.find(sl => sl.id === selectedSlot);
       await placeOrder(items, {
         address: {
           label: address.label,
@@ -136,8 +161,16 @@ export function CheckoutScreen({ navigation }: Props) {
         {/* Delivery slot */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Time</Text>
+          {leadDays > 0 ? (
+            <View style={styles.leadNotice}>
+              <Text style={styles.leadNoticeText}>
+                Your order includes something we bake to order, so the earliest we can
+                deliver is {dayLabel(leadDays).toLowerCase()}.
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.slotList}>
-            {DELIVERY_SLOTS.map(slot => {
+            {slots.map(slot => {
               const active = selectedSlot === slot.id;
               return (
                 <Pressable
@@ -303,6 +336,17 @@ function createStyles(colors: ColorPalette) {
       gap: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    leadNotice: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    leadNoticeText: {
+      fontSize: 12,
+      lineHeight: 18,
+      color: colors.text,
     },
     slotRowDisabled: {
       opacity: 0.45,

@@ -11,6 +11,7 @@ import { usePersistedState } from '../hooks/usePersistedState';
 import { RootStackParamList } from '../navigation/types';
 import { useCart } from '../state/CartContext';
 import { useCatalog } from '../state/CatalogContext';
+import { dayLabel, leadTimeForProduct, leadTimeLabel } from '../data/preOrder';
 import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { useUserProfile } from '../state/UserProfileContext';
@@ -21,6 +22,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetail'>;
 export function ProductDetailScreen({ route, navigation }: Props) {
   const { getProductById } = useCatalog();
   const product = getProductById(route.params.productId);
+  const leadDays = leadTimeForProduct(route.params.productId);
   const { getQuantity, increment, decrement } = useCart();
   const { colors, typography } = useTheme();
   const { profile } = useUserProfile();
@@ -191,11 +193,25 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             ) : null}
           </View>
 
-          {/* ETA delivery strip */}
+          {/* Made-to-order items quote their notice period instead of an ETA the
+              bakery cannot meet. */}
           <View style={styles.etaStrip}>
-            <Ionicons name="time-outline" size={15} color={colors.primary} />
+            <Ionicons
+              name={leadDays > 0 ? 'calendar-outline' : 'time-outline'}
+              size={15}
+              color={colors.primary}
+            />
             <Text style={styles.etaText}>
-              Delivery in <Text style={styles.etaBold}>{STORE.deliveryEta}</Text>
+              {leadDays > 0 ? (
+                <>
+                  <Text style={styles.etaBold}>{leadTimeLabel(leadDays)}</Text>
+                  {' — earliest delivery ' + dayLabel(leadDays).toLowerCase()}
+                </>
+              ) : (
+                <>
+                  Delivery in <Text style={styles.etaBold}>{STORE.deliveryEta}</Text>
+                </>
+              )}
             </Text>
           </View>
 
