@@ -156,6 +156,43 @@ if (url && key) {
       db.ok('place_order accepts order details');
     }
 
+    /* ------------------------------------------------------ customer sign-in */
+
+    if (channel === 'none') {
+      /* No OTP: every customer gets an anonymous session instead. Without the
+         provider enabled they get no session at all, place_order refuses them,
+         and checkout fails on the last tap. */
+      const anon = group('Customer sign-in (anonymous, no OTP)');
+      const r = await fetch(url + '/auth/v1/signup', {
+        method: 'POST',
+        headers: { apikey: key, 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (r.ok) {
+        anon.ok('anonymous sign-in works -- customers can check out without an account');
+      } else {
+        const body = await r.text();
+        if (/anonymous_provider_disabled/.test(body)) {
+          anon.fail(
+            'anonymous sign-in is disabled -- nobody can place an order',
+            'Supabase -> Authentication -> Providers -> Anonymous -> Enable',
+          );
+        } else {
+          anon.fail('anonymous sign-in failed: ' + body.slice(0, 120), 'send me this line');
+        }
+      }
+
+      const contact = await get('/rest/v1/orders?select=customer_name,customer_phone&limit=1');
+      if (contact.ok) {
+        anon.ok('orders carry the customer name and phone');
+      } else {
+        anon.fail(
+          'migration 003 is not applied -- orders have no contact number',
+          'run supabase/migrations/003_customer_contact.sql in the SQL editor',
+        );
+      }
+    } else {
+
     /* ---------------------------------------------------------- OTP delivery */
 
     const otp = group('OTP delivery (channel: ' + channel + ')');
@@ -271,6 +308,8 @@ if (url && key) {
         otp.ok(needed + ' is deployed');
       }
     }
+
+    } /* end: OTP channels */
   }
 }
 

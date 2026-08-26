@@ -48,6 +48,11 @@ export type OrderDetails = {
   address: DeliveryAddress;
   paymentMethod: PaymentMethod;
   deliverySlot: string;
+  /* The bakery rings ahead before delivering, so an order without a reachable
+     number cannot be completed. place_order rejects a missing or malformed one
+     rather than accepting an undeliverable order. */
+  customerName: string;
+  customerPhone: string;
   couponCode?: string;
   /* Both preview-mode only. Signed in, place_order recomputes the discount and
      the delivery fee itself and ignores whatever the client thinks they are. */
@@ -165,6 +170,8 @@ export async function placeOrder(items: NewOrderItem[], details: OrderDetails): 
       delivery_address: details.address,
       payment_method: details.paymentMethod,
       delivery_slot: details.deliverySlot,
+      customer_name: details.customerName,
+      customer_phone: details.customerPhone,
       coupon_code: details.couponCode ?? null,
     },
   });

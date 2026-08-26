@@ -1,10 +1,12 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,11 +20,14 @@ import { useLocation } from '../state/LocationContext';
 import { STORE } from '../data/store';
 import { PaymentMethod } from '../data/orders';
 import { dayLabel, leadTimeForCart, leadTimeLabel } from '../data/preOrder';
+import { digitsOnly, formatMobile, isValidMobile } from '../services/otp';
 import { useAuth } from '../state/AuthContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checkout'>;
+
+const CONTACT_KEY = 'lajwab.checkout.contact';
 
 function buildSlots(leadDays: number) {
   const day = dayLabel(leadDays);
@@ -88,6 +93,25 @@ export function CheckoutScreen({ navigation }: Props) {
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+
+  /* Remembered so a returning customer does not retype them every order. There
+     is no account to store them against yet -- the session is anonymous -- so
+     this lives on the device. */
+  useEffect(() => {
+    AsyncStorage.getItem(CONTACT_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw) as { name?: string; phone?: string };
+        if (saved.name) setCustomerName(saved.name);
+        if (saved.phone) setCustomerPhone(saved.phone);
+      } catch {
+        /* corrupt entry, not worth surfacing -- the fields just start empty */
+      }
+    });
+  }, []);
+
   const cartProducts = products.filter(p => (quantities[p.id] ?? 0) > 0);
 
   const handlePlaceOrder = async () => {
@@ -97,6 +121,14 @@ export function CheckoutScreen({ navigation }: Props) {
     }
     if (!address.id) {
       setError('Please choose a delivery address first.');
+      return;
+    }
+    if (customerName.trim() === '') {
+      setError('Please tell us who the order is for.');
+      return;
+    }
+    if (!isValidMobile(customerPhone)) {
+      setError('Please enter a valid 10-digit mobile number.');
       return;
     }
     if (!session) {
@@ -123,10 +155,16 @@ export function CheckoutScreen({ navigation }: Props) {
         },
         paymentMethod: selectedPayment,
         deliverySlot: slot?.label ?? selectedSlot,
+        customerName: customerName.trim(),
+        customerPhone: digitsOnly(customerPhone),
         deliveryFee,
         couponCode: appliedCoupon?.code,
         discount,
       });
+      await AsyncStorage.setItem(
+        CONTACT_KEY,
+        JSON.stringify({ name: customerName.trim(), phone: digitsOnly(customerPhone) }),
+      );
       await refetchProducts();
       clearCart();
       navigation.navigate('OrderConfirmation');
@@ -155,6 +193,42 @@ export function CheckoutScreen({ navigation }: Props) {
             <Pressable onPress={() => navigation.navigate('Addresses')} hitSlop={8}>
               <Text style={styles.changeLink}>Change</Text>
             </Pressable>
+          </View>
+        </View>
+
+        {/* Contact — the bakery rings ahead, so this is not optional */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Details</Text>
+          <View style={styles.fieldCard}>
+            <Text style={styles.fieldLabel}>Name</Text>
+            <TextInput
+              style={styles.input}
+              value={customerName}
+              onChangeText={setCustomerName}
+              placeholder="Who is this order for?"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="words"
+              autoComplete="name"
+              accessibilityLabel="Your name"
+            />
+            <Text style={[styles.fieldLabel, styles.fieldLabelSpaced]}>Mobile Number</Text>
+            <View style={styles.phoneRow}>
+              <Text style={styles.phonePrefix}>+91</Text>
+              <TextInput
+                style={[styles.input, styles.phoneInput]}
+                value={formatMobile(customerPhone)}
+                onChangeText={(text) => setCustomerPhone(digitsOnly(text).slice(0, 10))}
+                placeholder="98765 43210"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="number-pad"
+                autoComplete="tel"
+                maxLength={11}
+                accessibilityLabel="Your mobile number"
+              />
+            </View>
+            <Text style={styles.fieldHint}>
+              We call this number before delivering. Please check it is correct.
+            </Text>
           </View>
         </View>
 
@@ -317,6 +391,35 @@ function createStyles(colors: ColorPalette) {
     },
     addressIcon: { fontSize: 20 },
     addressInfo: { flex: 1, gap: 2 },
+    fieldCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.md,
+      gap: spacing.xs,
+    },
+    fieldLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+    fieldLabelSpaced: { marginTop: spacing.sm },
+    input: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      fontSize: 15,
+      color: colors.text,
+    },
+    phoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    phonePrefix: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textMuted,
+      paddingHorizontal: spacing.xs,
+    },
+    phoneInput: { flex: 1 },
+    fieldHint: { fontSize: 12, color: colors.textMuted, marginTop: spacing.xs },
     addressLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
     addressLine: { fontSize: 13, color: colors.textMuted },
     changeLink: { fontSize: 13, fontWeight: '700', color: colors.primary },

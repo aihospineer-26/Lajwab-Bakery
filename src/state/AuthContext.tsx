@@ -64,8 +64,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    /* Every customer gets a session, they just never see a login screen.
+       Anonymous sign-in mints a real auth.uid(), so place_order and every RLS
+       policy keep working untouched -- the alternative was opening the orders
+       table to unauthenticated writes, which would have made every order
+       readable by anyone.
+
+       It is deliberately not an identity. The phone number collected at
+       checkout is what coupons are counted against. When OTP arrives this same
+       account is upgraded in place, so nothing here is thrown away. */
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        setSession(data.session);
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: anon, error } = await supabase.auth.signInAnonymously();
+      /* A failure here is not fatal: the app falls back to the signed-out
+         preview overlay rather than blocking someone from browsing. */
+      if (error) console.warn('[auth] anonymous sign-in failed:', error.message);
+      setSession(anon?.session ?? null);
       setIsLoading(false);
     });
 
