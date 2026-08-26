@@ -125,7 +125,6 @@ begin
   end if;
 
   v_payment := coalesce(details ->> 'payment_method', 'cod');
-  v_delivery_fee := coalesce((details ->> 'delivery_fee')::integer, 0);
 
   -- Validate stock and subtotal, locking each product row.
   for v_item in select * from jsonb_array_elements(items)
@@ -152,6 +151,12 @@ begin
     v_subtotal := v_subtotal + v_price * v_qty;
     v_item_count := v_item_count + v_qty;
   end loop;
+
+  -- Decided here, not taken from the client. The app used to send its own
+  -- delivery_fee, so a tampered client could waive it on every order. Keep the
+  -- two numbers in step with DELIVERY_FEE / FREE_DELIVERY_THRESHOLD in
+  -- src/state/CartContext.tsx, or the customer sees a total we do not charge.
+  v_delivery_fee := case when v_subtotal >= 200 then 0 else 20 end;
 
   -- An invalid coupon is an error, never a silent drop, so the customer is
   -- never charged a total different from the one they agreed to.

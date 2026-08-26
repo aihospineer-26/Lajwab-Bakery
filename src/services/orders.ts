@@ -48,10 +48,10 @@ export type OrderDetails = {
   address: DeliveryAddress;
   paymentMethod: PaymentMethod;
   deliverySlot: string;
-  deliveryFee: number;
   couponCode?: string;
-  /* Preview-mode only. Signed in, place_order recomputes this server-side and
-     the client value is ignored. */
+  /* Both preview-mode only. Signed in, place_order recomputes the discount and
+     the delivery fee itself and ignores whatever the client thinks they are. */
+  deliveryFee: number;
   discount: number;
 };
 
@@ -165,7 +165,6 @@ export async function placeOrder(items: NewOrderItem[], details: OrderDetails): 
       delivery_address: details.address,
       payment_method: details.paymentMethod,
       delivery_slot: details.deliverySlot,
-      delivery_fee: details.deliveryFee,
       coupon_code: details.couponCode ?? null,
     },
   });
