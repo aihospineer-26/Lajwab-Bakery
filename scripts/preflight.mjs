@@ -171,23 +171,28 @@ if (url && key) {
         'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
         'EXPO_PUBLIC_FIREBASE_APP_ID',
       ];
+      /* Tagged by surface, because the two halves fail independently and you
+         will usually be working on one of them at a time. Neither substitutes
+         for the other: the website ignores google-services.json, and the APK
+         ignores the four values below. */
       const missing = WEB_KEYS.filter((k) => !env?.[k]);
       if (missing.length === 0) {
-        otp.ok('Firebase web config is set -- the website can sign people in');
+        otp.ok('[web] Firebase config is set -- the website can sign people in');
       } else {
         otp.fail(
-          'Firebase web config missing (' + missing.length + ' of 4) -- website login will not work',
+          '[web] Firebase config missing (' + missing.length + ' of 4) -- website login will not work',
           'Firebase console -> Project settings -> Your apps -> Web app, then fill these in .env.local: ' +
             missing.join(', '),
         );
       }
 
       if (fs.existsSync(path.join(ROOT, 'google-services.json'))) {
-        otp.ok('google-services.json present -- the APK can sign people in');
+        otp.ok('[apk] google-services.json present -- the APK can sign people in');
       } else {
         otp.fail(
-          'google-services.json missing -- phone login fails silently in the APK',
-          'download it from the Firebase console into the project root, and add your SHA-1 there first',
+          '[apk] google-services.json missing -- phone login fails silently in the APK',
+          'only blocks the APK, not the website. Download it from the Firebase console into ' +
+            'the project root, and add your SHA-1 there first',
         );
       }
     }
