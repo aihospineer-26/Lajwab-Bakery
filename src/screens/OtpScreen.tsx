@@ -14,6 +14,8 @@ import { AuthHero } from '../components/AuthHero';
 import { Button } from '../components/Button';
 import { RootStackParamList } from '../navigation/types';
 import {
+  CHANNEL_LABEL,
+  OTP_CHANNEL,
   OTP_DEMO_MODE,
   OTP_LENGTH,
   RESEND_SECONDS,
@@ -86,7 +88,11 @@ export function OtpScreen({ route, navigation }: Props) {
     setCode('');
     submittedFor.current = null;
     setSecondsLeft(RESEND_SECONDS);
-    setNotice(OTP_DEMO_MODE ? 'New code generated.' : 'We sent a new code on WhatsApp.');
+    setNotice(
+      OTP_DEMO_MODE
+        ? 'New code generated.'
+        : 'We sent a new code ' + CHANNEL_LABEL[OTP_CHANNEL] + '.',
+    );
   };
 
   const boxes = Array.from({ length: OTP_LENGTH });
@@ -104,7 +110,7 @@ export function OtpScreen({ route, navigation }: Props) {
             subtitle={
               OTP_DEMO_MODE
                 ? 'Demo mode — no message is sent. Your code is shown below.'
-                : 'We sent a ' + OTP_LENGTH + '-digit code on WhatsApp to +91 ' + formatMobile(mobile) + '.'
+                : 'We sent a ' + OTP_LENGTH + '-digit code ' + CHANNEL_LABEL[OTP_CHANNEL] + ' to +91 ' + formatMobile(mobile) + '.'
             }
           />
 
@@ -115,7 +121,16 @@ export function OtpScreen({ route, navigation }: Props) {
             </View>
           ) : null}
 
-          <Pressable style={styles.boxRow} onPress={() => inputRef.current?.focus()}>
+          <Pressable
+            style={styles.boxRow}
+            onPress={() => inputRef.current?.focus()}
+            accessibilityRole="button"
+            accessibilityLabel={
+              code.length === 0
+                ? 'Enter the ' + OTP_LENGTH + '-digit code'
+                : code.length + ' of ' + OTP_LENGTH + ' digits entered'
+            }
+          >
             {boxes.map((_, i) => (
               <View
                 key={i}
@@ -134,6 +149,7 @@ export function OtpScreen({ route, navigation }: Props) {
           <TextInput
             ref={inputRef}
             style={styles.hiddenInput}
+            accessibilityLabel={'Verification code, ' + OTP_LENGTH + ' digits'}
             value={code}
             onChangeText={handleChange}
             keyboardType="number-pad"

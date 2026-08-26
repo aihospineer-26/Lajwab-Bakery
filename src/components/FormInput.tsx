@@ -36,6 +36,7 @@ export function FormInput({
   const [isFocused, setIsFocused] = useState(false);
 
   const shared = {
+    accessibilityLabel: label,
     placeholder,
     placeholderTextColor: colors.textMuted,
     value,

@@ -93,7 +93,13 @@ export function ProductCard({ productId, image, name, unit, price, mrp, stock, o
 
   return (
     <Card style={styles.card}>
-      <Pressable onPress={onPress} style={styles.imageWrap}>
+      <Pressable
+        onPress={onPress}
+        style={styles.imageWrap}
+        accessibilityRole="button"
+        accessibilityLabel={name + ', ' + unit + ', ' + price + ' rupees'}
+        accessibilityHint="Opens product details"
+      >
         <View style={styles.imageContainer}>
           {photo ? (
             <Image source={photo} style={styles.image} resizeMode="cover" />
@@ -129,7 +135,12 @@ export function ProductCard({ productId, image, name, unit, price, mrp, stock, o
               ]}
             >
               <Animated.View style={{ transform: [{ scale: addScale }] }}>
-                <Pressable style={styles.addButton} onPress={handleAdd}>
+                <Pressable
+                  style={styles.addButton}
+                  onPress={handleAdd}
+                  accessibilityRole="button"
+                  accessibilityLabel={'Add ' + name + ' to cart'}
+                >
                   <Text style={styles.addButtonText}>ADD</Text>
                 </Pressable>
               </Animated.View>
@@ -149,17 +160,26 @@ export function ProductCard({ productId, image, name, unit, price, mrp, stock, o
               ]}
             >
               <View style={styles.stepper}>
-                <Pressable style={styles.stepperButton} onPress={() => decrement(productId)}>
+                <Pressable
+                  style={styles.stepperButton}
+                  onPress={() => decrement(productId)}
+                  accessibilityRole="button"
+                  accessibilityLabel={'Remove one ' + name}
+                >
                   <Text style={styles.stepperButtonText}>−</Text>
                 </Pressable>
                 <Animated.Text
                   style={[styles.stepperValue, { transform: [{ scale: qtyScale }] }]}
+                  accessibilityLabel={quantity + ' in cart'}
                 >
                   {quantity}
                 </Animated.Text>
                 <Pressable
                   style={[styles.stepperButton, isAtStockLimit && styles.stepperButtonDisabled]}
                   onPress={() => !isAtStockLimit && increment(productId)}
+                  accessibilityRole="button"
+                  accessibilityLabel={'Add one more ' + name}
+                  accessibilityState={{ disabled: isAtStockLimit }}
                 >
                   <Text style={styles.stepperButtonText}>+</Text>
                 </Pressable>
