@@ -203,7 +203,21 @@ if (url && key) {
             },
           );
           const msg = (await res.json())?.error?.message ?? '';
-          if (/region/i.test(msg)) {
+          /* Only a reCAPTCHA complaint proves the provider is live: it means
+             Google got all the way to validating our deliberately fake token
+             and had no earlier objection. Anything else is treated as unknown
+             rather than fine -- an earlier version passed BILLING_NOT_ENABLED
+             as healthy, which is exactly the false all-clear this tool exists
+             to prevent. */
+          if (/captcha/i.test(msg)) {
+            otp.ok('[web] Firebase will send SMS to India');
+          } else if (/BILLING_NOT_ENABLED/.test(msg)) {
+            otp.fail(
+              '[web] Firebase needs a billing plan before it will send any SMS',
+              'Firebase console -> the gear -> Usage and billing -> Modify plan -> Blaze. ' +
+                'Or switch channel: EXPO_PUBLIC_OTP_CHANNEL=whatsapp',
+            );
+          } else if (/region/i.test(msg)) {
             otp.fail(
               '[web] Firebase is blocking SMS to India -- no customer can receive a code',
               'Firebase console -> Authentication -> Settings -> SMS region policy -> Allow -> add India',
@@ -213,10 +227,13 @@ if (url && key) {
               '[web] Firebase phone sign-in is switched off',
               'Firebase console -> Authentication -> Sign-in method -> Phone -> Enable',
             );
+          } else if (/QUOTA|EXCEEDED/i.test(msg)) {
+            otp.fail('[web] Firebase SMS quota is exhausted', 'check Usage and billing in the Firebase console');
           } else {
-            /* CAPTCHA_CHECK_FAILED and friends mean the provider is live and
-               got as far as validating our deliberately fake token. */
-            otp.ok('[web] Firebase accepts SMS for India');
+            otp.warn(
+              '[web] Firebase returned an unrecognised error: ' + (msg || '(empty)'),
+              'send me this line -- it is not a known failure',
+            );
           }
         } catch {
           otp.warn('could not reach Google to check the SMS region policy', 'check again when online');
