@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "supabase": "^2.115.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -41,7 +42,8 @@
     "web:inventory": "npx cross-env EXPO_PUBLIC_APP_TARGET=inventory expo start --web --port 3001",
     "build": "expo export -p web",
     "build:inventory": "npx cross-env EXPO_PUBLIC_APP_TARGET=inventory expo export -p web --output-dir dist-inventory",
-    "verify": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify.mjs"
+    "verify": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify.mjs",
+    "preflight": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/preflight.mjs"
   },
   "private": true
 }

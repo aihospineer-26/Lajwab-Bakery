@@ -1,0 +1,207 @@
+/* Launch preflight -- checks the LIVE server, not the source.
+ *
+ * verify.mjs reads the code. This reads what is actually deployed, because the
+ * two drifted badly once: the app called place_order(items, details) while the
+ * database still only had the one-argument version, and demo mode hid it by
+ * writing orders to the phone instead. Both faults were invisible in the app.
+ *
+ * Run after every launch step. Exit code is non-zero while blockers remain.
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+const groups = [];
+let blockers = 0;
+
+function group(title) {
+  const g = { title, rows: [] };
+  groups.push(g);
+  return {
+    ok: (text) => g.rows.push({ state: 'ok', text }),
+    warn: (text, fix) => g.rows.push({ state: 'warn', text, fix }),
+    fail: (text, fix) => {
+      blockers++;
+      g.rows.push({ state: 'fail', text, fix });
+    },
+  };
+}
+
+function readEnv() {
+  const file = path.join(ROOT, '.env.local');
+  if (!fs.existsSync(file)) return null;
+  const env = {};
+  for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
+    if (m) env[m[1]] = m[2].trim();
+  }
+  return env;
+}
+
+/* ---------------------------------------------------------------- config */
+
+const env = readEnv();
+const cfg = group('App configuration');
+
+if (!env) {
+  cfg.fail('.env.local is missing', 'copy .env.example to .env.local and fill it in');
+} else {
+  if (env.EXPO_PUBLIC_SUPABASE_URL && env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
+    cfg.ok('Supabase URL and key are set');
+  } else {
+    cfg.fail('Supabase URL or key is missing', 'add both to .env.local');
+  }
+
+  if (env.EXPO_PUBLIC_OTP_MODE === 'demo') {
+    cfg.fail(
+      'EXPO_PUBLIC_OTP_MODE=demo -- orders save to the phone and never reach the bakery',
+      'delete that line from .env.local, then restart with: npx expo start -c',
+    );
+  } else {
+    cfg.ok('demo mode is off -- orders go to the server');
+  }
+}
+
+const channel = env?.EXPO_PUBLIC_OTP_CHANNEL || 'whatsapp';
+
+/* ----------------------------------------------------------- store details */
+
+const store = group('Bakery details');
+const storeSrc = fs.readFileSync(path.join(ROOT, 'src/data/store.ts'), 'utf8');
+
+const STORE_FIELDS = [
+  ['phone', 'customers cannot call the bakery', true],
+  ['fssai', 'required by law on an Indian food app', true],
+  ['whatsapp', 'the WhatsApp support button stays hidden', false],
+];
+
+for (const [field, why, required] of STORE_FIELDS) {
+  const m = storeSrc.match(new RegExp('^\\s*' + field + ":\\s*'([^']*)'", 'm'));
+  const value = m ? m[1].trim() : '';
+  if (value) {
+    store.ok(field + ' is set');
+  } else if (required) {
+    store.fail('STORE.' + field + ' is empty -- ' + why, 'fill it in src/data/store.ts');
+  } else {
+    store.warn('STORE.' + field + ' is empty -- ' + why, 'optional: fill it in src/data/store.ts');
+  }
+}
+
+/* --------------------------------------------------------------- database */
+
+const url = env?.EXPO_PUBLIC_SUPABASE_URL;
+const key = env?.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (url && key) {
+  const headers = { apikey: key, Authorization: 'Bearer ' + key };
+  const db = group('Database');
+
+  const get = (pathname, extra) =>
+    fetch(url + pathname, { headers: { ...headers, ...extra } });
+
+  let reachable = true;
+  try {
+    const r = await get('/rest/v1/products?select=id&limit=1', {
+      Prefer: 'count=exact',
+      Range: '0-0',
+    });
+    if (r.ok) {
+      const total = (r.headers.get('content-range') || '').split('/')[1];
+      db.ok('catalog is live (' + total + ' products)');
+    } else {
+      db.fail('cannot read the products table', 'check migration 001 ran and RLS allows public reads');
+    }
+  } catch (err) {
+    reachable = false;
+    db.warn('cannot reach Supabase (' + err.message + ')', 'check your internet, then run this again');
+  }
+
+  if (reachable) {
+    const cols = await get(
+      '/rest/v1/orders?select=delivery_address,payment_method,coupon_code,discount,delivery_fee&limit=1',
+    );
+    if (cols.ok) {
+      db.ok('migration 002 columns are present');
+    } else {
+      db.fail(
+        'migration 002 is NOT applied -- orders have no delivery address',
+        'open the Supabase SQL editor, paste all of supabase/migrations/002_order_details.sql, press Run',
+      );
+    }
+
+    const coupons = await get('/rest/v1/coupons?select=code&limit=1');
+    if (coupons.ok) {
+      db.ok('coupons table exists');
+    } else {
+      db.fail(
+        'coupons table is missing -- FIRST50 cannot be checked server-side',
+        'part of migration 002',
+      );
+    }
+
+    const rpc = await fetch(url + '/rest/v1/rpc/place_order', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [], details: {} }),
+    });
+    /* 404 means PostgREST found no function with this signature. Any other
+       status means it exists and merely rejected the empty test payload. */
+    if (rpc.status === 404) {
+      db.fail(
+        'place_order(items, details) does not exist -- every checkout returns 404',
+        'part of migration 002',
+      );
+    } else {
+      db.ok('place_order accepts order details');
+    }
+
+    /* ---------------------------------------------------------- OTP delivery */
+
+    const otp = group('OTP delivery (channel: ' + channel + ')');
+    const needed =
+      channel === 'firebase' ? 'firebase-otp-bridge' : channel === 'demo' ? null : 'whatsapp-otp';
+
+    if (!needed) {
+      otp.warn(
+        'channel is demo -- no real codes are sent',
+        'set EXPO_PUBLIC_OTP_CHANNEL=whatsapp for launch',
+      );
+    } else {
+      const fn = await fetch(url + '/functions/v1/' + needed, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (fn.status === 404) {
+        otp.fail(
+          needed + ' is not deployed -- nobody can sign in',
+          'npx supabase functions deploy ' + needed,
+        );
+      } else {
+        otp.ok(needed + ' is deployed');
+      }
+    }
+  }
+}
+
+/* ----------------------------------------------------------------- report */
+
+const MARK = { ok: ' ok ', warn: ' !  ', fail: ' XX ' };
+
+console.log('\nLAUNCH PREFLIGHT\n');
+for (const g of groups) {
+  console.log('  ' + g.title);
+  for (const row of g.rows) {
+    console.log('  ' + MARK[row.state] + ' ' + row.text);
+    if (row.fix) console.log('         -> ' + row.fix);
+  }
+  console.log('');
+}
+
+if (blockers === 0) {
+  console.log('  READY. No blockers.\n');
+} else {
+  console.log('  ' + blockers + ' blocker' + (blockers === 1 ? '' : 's') + ' left before launch.\n');
+  process.exitCode = 1;
+}

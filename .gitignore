@@ -56,3 +56,6 @@ image copy.png
 # Firebase project config (identifies the app, ships inside it anyway)
 google-services.json
 GoogleService-Info.plist
+
+# Supabase CLI scratch space
+supabase/.temp/
