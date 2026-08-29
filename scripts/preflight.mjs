@@ -212,9 +212,14 @@ if (url && key) {
           'MSG91 dashboard -> OTP -> Widgets, then fill these in .env.local: ' + missing.join(', '),
         );
       }
+      /* Confirmed on 29 Aug 2026 against a real number on the web build: code
+         sent, verified, bridge exchanged it for a Supabase session, order
+         placed. The Android path is a different one -- MSG91 runs inside a
+         hidden WebView there -- and has never been exercised, so this stays a
+         warning until an APK is tested on a real handset. */
       otp.warn(
-        'MSG91 phone verification not yet confirmed against a real number',
-        'send a real OTP once and check the app for the result -- this tool cannot trigger the widget itself',
+        'MSG91 confirmed on web; the Android WebView path is still untested',
+        'test sign-in on a real handset before shipping an APK -- this tool cannot trigger the widget itself',
       );
     }
 
