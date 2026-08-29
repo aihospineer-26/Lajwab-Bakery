@@ -30,7 +30,7 @@ export type DealBanner = {
  * and the two must always be changed together or the app offers codes that
  * checkout then rejects. */
 export const COUPONS: Coupon[] = [
-  { code: 'FIRST50', discount: '50% OFF', type: 'percent', value: 50, maxDiscount: 150, description: 'Your first order — up to ₹150 off', minOrder: 0, validTill: '30 Sep', color: '#A9542F' },
+  { code: 'FIRST50', discount: '50% OFF', type: 'percent', value: 50, maxDiscount: 150, description: 'First order · min ₹149 · up to ₹150 off', minOrder: 149, validTill: '30 Sep', color: '#A9542F' },
 ];
 
 export function findCoupon(code: string): Coupon | undefined {

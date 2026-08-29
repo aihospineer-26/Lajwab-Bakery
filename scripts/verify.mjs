@@ -37,6 +37,10 @@ function truthy(name, value) {
 check('FIRST50 halves a small first order', calculateDiscount(findCoupon('FIRST50'), 200), 100);
 check('FIRST50 stops at ₹150 off', calculateDiscount(findCoupon('FIRST50'), 1551), 150);
 check('FIRST50 stays at ₹150 however big the order', calculateDiscount(findCoupon('FIRST50'), 5000), 150);
+/* The minimum keeps a single ₹30 patty from earning a discount and a delivery
+   run. Must match min_order on the FIRST50 row. */
+check('FIRST50 needs a ₹149 basket', findCoupon('FIRST50')?.minOrder, 149);
+check('the coupon card states both limits', /min ₹149/.test(findCoupon('FIRST50')?.description ?? ''), true);
 check('coupon lookup is case-insensitive', findCoupon('first50')?.code, 'FIRST50');
 check('unknown coupon is undefined', findCoupon('NOPE'), undefined);
 
