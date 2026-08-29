@@ -30,8 +30,13 @@ function truthy(name, value) {
 
 /* ---------- coupons ---------- */
 
-check('FIRST50 halves a 1551 thaali', calculateDiscount(findCoupon('FIRST50'), 1551), 776);
-check('FIRST50 capped at 1000', calculateDiscount(findCoupon('FIRST50'), 5000), 1000);
+/* The cap is what bounds the bakery's exposure, so it is asserted from both
+   ends: a small order gets the full half off, and a large one stops at ₹150.
+   Whatever this says must match max_discount on the FIRST50 row in the coupons
+   table -- the table is what actually charges the customer. */
+check('FIRST50 halves a small first order', calculateDiscount(findCoupon('FIRST50'), 200), 100);
+check('FIRST50 stops at ₹150 off', calculateDiscount(findCoupon('FIRST50'), 1551), 150);
+check('FIRST50 stays at ₹150 however big the order', calculateDiscount(findCoupon('FIRST50'), 5000), 150);
 check('coupon lookup is case-insensitive', findCoupon('first50')?.code, 'FIRST50');
 check('unknown coupon is undefined', findCoupon('NOPE'), undefined);
 
