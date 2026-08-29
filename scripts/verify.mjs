@@ -32,16 +32,21 @@ function truthy(name, value) {
 
 check('FIRST50 halves a 1551 thaali', calculateDiscount(findCoupon('FIRST50'), 1551), 776);
 check('FIRST50 capped at 1000', calculateDiscount(findCoupon('FIRST50'), 5000), 1000);
-check('LAJWAB100 is flat 100', calculateDiscount(findCoupon('LAJWAB100'), 650), 100);
-check('flat discount never exceeds subtotal', calculateDiscount(findCoupon('LAJWAB100'), 60), 60);
-check('FREESHIP discounts nothing', calculateDiscount(findCoupon('FREESHIP'), 500), 0);
 check('coupon lookup is case-insensitive', findCoupon('first50')?.code, 'FIRST50');
 check('unknown coupon is undefined', findCoupon('NOPE'), undefined);
 
-/* Every coupon the app offers must exist in migration 002, or the server
-   rejects a code the customer was shown. */
-const SERVER_CODES = ['FIRST50', 'JANMASHTAMI', 'LAJWAB100', 'FREESHIP'];
-check('app coupons match the server table', COUPONS.map((c) => c.code).sort(), [...SERVER_CODES].sort());
+/* FIRST50 is the only coupon the bakery offers. The other three were retired
+   because none of them had a per-customer limit, so one customer could claim
+   them on every order forever; they are switched off in the coupons table too.
+   This list is what the app advertises and the table is what checkout enforces
+   -- if they drift, customers are shown codes that are then rejected, so a
+   retired code must never reappear here alone. */
+const OFFERED_CODES = ['FIRST50'];
+check('app offers exactly the active coupons', COUPONS.map((c) => c.code).sort(), OFFERED_CODES);
+truthy('every offered coupon still resolves', COUPONS.every((c) => findCoupon(c.code)));
+for (const retired of ['JANMASHTAMI', 'LAJWAB100', 'FREESHIP']) {
+  check('retired coupon ' + retired + ' is not advertised', findCoupon(retired), undefined);
+}
 
 /* ---------- delivery fee ----------
    place_order decides the fee, so the two constants must agree. If they drift,

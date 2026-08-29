@@ -10,14 +10,19 @@ export type Product = {
 };
 
 /* Placeholder prices — realistic Delhi bakery rates, to be replaced with
-   Lajwab's actual price list. Everything here is 100% eggless and pure veg. */
+   Lajwab's actual price list. Everything here is 100% eggless and pure veg.
+ *
+ * `mrp` is deliberately unset everywhere. Two products carried one -- the
+ * thaali struck through at ₹1851 and the black forest cake at ₹600 -- which
+ * advertised a saving on a price the bakery had never charged. A struck-through
+ * price is a claim about what something used to cost, so only set it from the
+ * dashboard once that is actually true. */
 export const products: Product[] = [
   {
     id: 'lb-thaali-56',
     name: '56 Bhog Thaali',
     unit: 'Serves 4–6',
     price: 1551,
-    mrp: 1851,
     image: '🪔',
     categoryId: 'janmashtami',
     description:
@@ -25,7 +30,7 @@ export const products: Product[] = [
   },
 
   { id: 'lb-cake-pineapple', name: 'Pineapple Cake', unit: '500g', price: 450, image: '🎂', categoryId: 'cakes', description: 'Light vanilla sponge layered with pineapple crush and fresh cream. Eggless.' },
-  { id: 'lb-cake-blackforest', name: 'Black Forest Cake', unit: '500g', price: 550, mrp: 600, image: '🍫', categoryId: 'cakes', description: 'Chocolate sponge, whipped cream and cherries — the everyday celebration classic. Eggless.' },
+  { id: 'lb-cake-blackforest', name: 'Black Forest Cake', unit: '500g', price: 550, image: '🍫', categoryId: 'cakes', description: 'Chocolate sponge, whipped cream and cherries — the everyday celebration classic. Eggless.' },
   { id: 'lb-cake-truffle', name: 'Choco Truffle Cake', unit: '500g', price: 650, image: '🎂', categoryId: 'cakes', description: 'Rich dark chocolate truffle with a dense ganache finish. Eggless.' },
   { id: 'lb-cake-chocolate', name: 'Chocolate Cake', unit: '500g', price: 500, image: '🍫', categoryId: 'cakes', description: 'Classic moist chocolate cake with chocolate cream frosting. Eggless.' },
   { id: 'lb-cake-oreo', name: 'Oreo Cake', unit: '500g', price: 600, image: '🎂', categoryId: 'cakes', description: 'Cookies-and-cream layers finished with crushed Oreo. A favourite with kids. Eggless.' },

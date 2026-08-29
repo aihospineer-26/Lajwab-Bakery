@@ -21,19 +21,16 @@ export type DealBanner = {
   textColor: string;
 };
 
-export type FlashDeal = {
-  id: string;
-  name: string;
-  emoji: string;
-  originalPrice: number;
-  salePrice: number;
-};
-
+/* One coupon, once per customer.
+ *
+ * JANMASHTAMI, LAJWAB100 and FREESHIP were also listed here and are gone: all
+ * three had no per-customer limit in the database, so a single customer could
+ * claim LAJWAB100's ₹100 on every order they ever placed. They are deactivated
+ * in the coupons table too -- this list only advertises, the table enforces,
+ * and the two must always be changed together or the app offers codes that
+ * checkout then rejects. */
 export const COUPONS: Coupon[] = [
   { code: 'FIRST50', discount: '50% OFF', type: 'percent', value: 50, maxDiscount: 1000, description: 'Your first order — any amount', minOrder: 0, validTill: '30 Sep', color: '#A9542F' },
-  { code: 'JANMASHTAMI', discount: '₹151 OFF', type: 'flat', value: 151, description: 'On the 56 Bhog Thaali', minOrder: 999, validTill: '3 Sep', color: '#C4452F' },
-  { code: 'LAJWAB100', discount: '₹100 OFF', type: 'flat', value: 100, description: 'Min. order ₹599', minOrder: 599, validTill: '30 Sep', color: '#E8A33D' },
-  { code: 'FREESHIP', discount: 'FREE DELIVERY', type: 'freeship', value: 0, description: 'No minimum order required', minOrder: 0, validTill: '30 Sep', color: '#3D8B5F' },
 ];
 
 export function findCoupon(code: string): Coupon | undefined {
@@ -51,18 +48,21 @@ export function calculateDiscount(coupon: Coupon, subtotal: number): number {
 }
 
 export const DEAL_BANNERS: DealBanner[] = [
-  { id: '1', emoji: '🪔', title: '56 Bhog Thaali', subtitle: 'Free bansuri with every thaali', discount: 'JANMASHTAMI', bg: '#FDF0DC', textColor: '#7A3A1E' },
+  { id: '1', emoji: '🪔', title: '56 Bhog Thaali', subtitle: 'Free bansuri with every thaali', discount: 'Order a day ahead', bg: '#FDF0DC', textColor: '#7A3A1E' },
   { id: '2', emoji: '🎂', title: 'Fresh Cakes', subtitle: 'Eggless, baked to order', discount: 'From ₹450', bg: '#F5E4D7', textColor: '#7A3A1E' },
   { id: '3', emoji: '🍰', title: 'Butterscotch Pastry', subtitle: 'What Janakpuri comes back for', discount: 'Bestseller', bg: '#FDF0DC', textColor: '#7A4F00' },
   { id: '4', emoji: '🍞', title: 'Breads & Buns', subtitle: 'Out of the oven each morning', discount: 'From ₹40', bg: '#F7EEE2', textColor: '#7A3A1E' },
   { id: '5', emoji: '🥜', title: 'Namkeen & Mathi', subtitle: 'Freshly fried, by weight', discount: 'From ₹80', bg: '#FDF0DC', textColor: '#7A0B2E' },
 ];
 
-export const FLASH_DEALS: FlashDeal[] = [
-  { id: 'f1', name: 'Butter Scotch Pastry', emoji: '🍰', originalPrice: 70, salePrice: 60 },
-  { id: 'f2', name: 'Aloo Patty', emoji: '🥟', originalPrice: 35, salePrice: 30 },
-  { id: 'f3', name: 'Brown Bread 400g', emoji: '🍞', originalPrice: 55, salePrice: 45 },
-  { id: 'f4', name: 'Khari Puff 250g', emoji: '🥐', originalPrice: 120, salePrice: 100 },
-  { id: 'f5', name: 'Bikaneri Bhujia 250g', emoji: '🥨', originalPrice: 110, salePrice: 90 },
-  { id: 'f6', name: 'Choco Chip Cookies', emoji: '🍪', originalPrice: 190, salePrice: 160 },
-];
+/* The Flash Sale is gone, not emptied.
+ *
+ * Every "original price" in it was invented -- Aloo Patty was advertised as
+ * reduced from ₹35 when ₹30 is simply what it costs, Khari Puff from ₹120 when
+ * it is ₹100, and so on for all six. The percentages shown were computed from
+ * those invented numbers, and nothing applied the "sale" price at checkout
+ * because it was already the normal price. A struck-through price the bakery
+ * never charged is not a placeholder, it is a false claim about a discount.
+ *
+ * If the bakery wants real time-limited deals, they need a source of truth in
+ * the database that checkout also reads -- the same split as COUPONS above. */

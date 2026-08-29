@@ -20,6 +20,7 @@ import { useLocation } from '../state/LocationContext';
 import { STORE } from '../data/store';
 import { PaymentMethod } from '../data/orders';
 import { dayLabel, leadTimeForCart, leadTimeLabel } from '../data/preOrder';
+import { validatePincode } from '../data/serviceability';
 import { digitsOnly, formatMobile, isValidMobile } from '../services/otp';
 import { useAuth } from '../state/AuthContext';
 import { useTheme } from '../state/ThemeContext';
@@ -127,6 +128,15 @@ export function CheckoutScreen({ navigation }: Props) {
     }
     if (!address.id) {
       setError('Please choose a delivery address first.');
+      return;
+    }
+    /* The pincode was only ever checked when an address was first saved, so an
+       address that predates the rule -- or one whose area the bakery later stops
+       covering -- could still be selected here and reach the kitchen as an order
+       nobody can deliver. This is the last gate before that happens. */
+    const outOfArea = validatePincode(address.pincode ?? '');
+    if (outOfArea) {
+      setError(outOfArea);
       return;
     }
     if (customerName.trim() === '') {
