@@ -34,8 +34,13 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!session) {
-      setAddresses(MOCK_ADDRESSES);
-      setSelected(prev => prev ?? MOCK_ADDRESSES.find(a => a.isDefault) ?? MOCK_ADDRESSES[0] ?? null);
+      /* Sample addresses are for developing against, not for customers.
+         Anonymous sign-in is disabled on the project, so signed-out customers
+         land here for real and were being shown three saved addresses that
+         belong to nobody -- including someone's "Parents' Place". */
+      const seed = __DEV__ ? MOCK_ADDRESSES : [];
+      setAddresses(seed);
+      setSelected(prev => prev ?? seed.find(a => a.isDefault) ?? seed[0] ?? null);
       setIsLoading(false);
       return;
     }

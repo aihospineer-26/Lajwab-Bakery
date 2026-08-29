@@ -22,6 +22,8 @@ export type InventoryTabParamList = {
 
 export type RootStackParamList = {
   Login: undefined;
+  /* Same screen as Login, shown once at first launch with a Skip control. */
+  SignInPrompt: undefined;
   InventoryLogin: undefined;
   VerifyOtp: { mobile: string; fullName?: string };
   MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;

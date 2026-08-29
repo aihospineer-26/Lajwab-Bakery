@@ -96,18 +96,24 @@ export function CheckoutScreen({ navigation }: Props) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
 
-  /* Remembered so a returning customer does not retype them every order. There
-     is no account to store them against yet -- the session is anonymous -- so
-     this lives on the device. */
+  /* The number is never typed here -- it is the one the customer proved they
+     hold at sign-in, so asking again would invite a typo on the one field the
+     bakery depends on to deliver. Read straight off the session. */
+  useEffect(() => {
+    const verified = session?.user?.phone;
+    if (verified) setCustomerPhone(digitsOnly(verified).slice(-10));
+  }, [session]);
+
+  /* The name is not part of signing in, so it is still asked for once and
+     remembered on the device for next time. */
   useEffect(() => {
     AsyncStorage.getItem(CONTACT_KEY).then((raw) => {
       if (!raw) return;
       try {
-        const saved = JSON.parse(raw) as { name?: string; phone?: string };
+        const saved = JSON.parse(raw) as { name?: string };
         if (saved.name) setCustomerName(saved.name);
-        if (saved.phone) setCustomerPhone(saved.phone);
       } catch {
-        /* corrupt entry, not worth surfacing -- the fields just start empty */
+        /* corrupt entry, not worth surfacing -- the field just starts empty */
       }
     });
   }, []);
@@ -127,12 +133,14 @@ export function CheckoutScreen({ navigation }: Props) {
       setError('Please tell us who the order is for.');
       return;
     }
-    if (!isValidMobile(customerPhone)) {
-      setError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
+    /* Checked before the number, because the number now comes from the signed-in
+       session rather than from anything typed on this screen. */
     if (!session) {
       navigation.navigate('Login');
+      return;
+    }
+    if (!isValidMobile(customerPhone)) {
+      setError('We could not read your verified number. Please sign in again.');
       return;
     }
     setError(null);
@@ -161,10 +169,7 @@ export function CheckoutScreen({ navigation }: Props) {
         couponCode: appliedCoupon?.code,
         discount,
       });
-      await AsyncStorage.setItem(
-        CONTACT_KEY,
-        JSON.stringify({ name: customerName.trim(), phone: digitsOnly(customerPhone) }),
-      );
+      await AsyncStorage.setItem(CONTACT_KEY, JSON.stringify({ name: customerName.trim() }));
       await refetchProducts();
       clearCart();
       navigation.navigate('OrderConfirmation');
@@ -214,20 +219,10 @@ export function CheckoutScreen({ navigation }: Props) {
             <Text style={[styles.fieldLabel, styles.fieldLabelSpaced]}>Mobile Number</Text>
             <View style={styles.phoneRow}>
               <Text style={styles.phonePrefix}>+91</Text>
-              <TextInput
-                style={[styles.input, styles.phoneInput]}
-                value={formatMobile(customerPhone)}
-                onChangeText={(text) => setCustomerPhone(digitsOnly(text).slice(0, 10))}
-                placeholder="98765 43210"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="number-pad"
-                autoComplete="tel"
-                maxLength={11}
-                accessibilityLabel="Your mobile number"
-              />
+              <Text style={styles.phoneVerified}>{formatMobile(customerPhone)}</Text>
             </View>
             <Text style={styles.fieldHint}>
-              We call this number before delivering. Please check it is correct.
+              Verified when you signed in. We call this number before delivering.
             </Text>
           </View>
         </View>
@@ -419,6 +414,9 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: spacing.xs,
     },
     phoneInput: { flex: 1 },
+    /* Not an input -- the number is already verified, so it reads as settled
+       fact rather than an empty box inviting a correction. */
+    phoneVerified: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.text },
     fieldHint: { fontSize: 12, color: colors.textMuted, marginTop: spacing.xs },
     addressLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
     addressLine: { fontSize: 13, color: colors.textMuted },

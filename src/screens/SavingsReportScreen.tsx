@@ -1,57 +1,156 @@
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
+import { Order } from '../data/orders';
 import { RootStackParamList } from '../navigation/types';
+import { fetchOrders } from '../services/orders';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SavingsReport'>;
 
-const WEEKLY = [
-  { day: 'Mon', saved: 42 },
-  { day: 'Tue', saved: 85 },
-  { day: 'Wed', saved: 23 },
-  { day: 'Thu', saved: 67 },
-  { day: 'Fri', saved: 110 },
-  { day: 'Sat', saved: 95 },
-  { day: 'Sun', saved: 20 },
-];
+/* Every number here used to be a constant -- a ₹442 week, a per-category
+   breakdown and an "AI tip" about tomato prices, shown identically to a
+   customer who had never ordered. It now reports what the customer actually
+   saved: the discount recorded on their own orders, and nothing else. */
 
-const CATEGORIES = [
-  { name: 'Cakes', saved: 148, icon: '🎂' },
-  { name: 'Pastries', saved: 97, icon: '🍰' },
-  { name: 'Breads & Buns', saved: 55, icon: '🍞' },
-  { name: 'Cookies', saved: 47, icon: '🍪' },
-];
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function orderDate(order: Order): Date | null {
+  const raw = order.createdAt ?? order.date;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/* Cancelled orders were never paid for, so nothing was saved on them. */
+function counts(order: Order): boolean {
+  return order.status !== 'cancelled' && (order.discount ?? 0) > 0;
+}
+
+type DayBucket = { day: string; saved: number };
+
+function lastSevenDays(orders: Order[]): DayBucket[] {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const buckets: DayBucket[] = [];
+
+  for (let back = 6; back >= 0; back--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - back);
+    buckets.push({ day: DAY_LABELS[d.getDay()], saved: 0 });
+  }
+
+  const earliest = new Date(today);
+  earliest.setDate(today.getDate() - 6);
+  earliest.setHours(0, 0, 0, 0);
+
+  for (const order of orders) {
+    if (!counts(order)) continue;
+    const when = orderDate(order);
+    if (!when || when < earliest || when > today) continue;
+    const daysBack = Math.floor((today.getTime() - when.getTime()) / 86400000);
+    const index = 6 - Math.min(daysBack, 6);
+    buckets[index].saved += order.discount ?? 0;
+  }
+
+  return buckets;
+}
 
 export function SavingsReportScreen({ navigation }: Props) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const totalWeek = WEEKLY.reduce((s, d) => s + d.saved, 0);
-  const maxBar = Math.max(...WEEKLY.map(d => d.saved));
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+    fetchOrders()
+      .then(setOrders)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load your orders'))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const weekly = useMemo(() => lastSevenDays(orders), [orders]);
+  const totalWeek = weekly.reduce((sum, d) => sum + d.saved, 0);
+  const totalEver = useMemo(
+    () => orders.reduce((sum, o) => sum + (counts(o) ? o.discount ?? 0 : 0), 0),
+    [orders],
+  );
+  const maxBar = Math.max(...weekly.map((d) => d.saved), 1);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <AppHeader title="My Savings Report" onBack={() => navigation.goBack()} />
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <AppHeader title="My Savings Report" onBack={() => navigation.goBack()} />
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={38} color={colors.border} />
+          <Text style={[typography.body, styles.centerText]}>Couldn't load your savings.</Text>
+          <Pressable style={styles.cta} onPress={load}>
+            <Text style={styles.ctaText}>Retry</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (totalEver === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <AppHeader title="My Savings Report" onBack={() => navigation.goBack()} />
+        <View style={styles.centered}>
+          <Text style={styles.emptyEmoji}>🧾</Text>
+          <Text style={[typography.subheading, { fontSize: 20, marginTop: spacing.sm }]}>
+            Nothing saved yet
+          </Text>
+          <Text style={[typography.body, styles.centerText]}>
+            Use an offer or a coupon on an order and your savings will start showing up here.
+          </Text>
+          <Pressable style={styles.cta} onPress={() => navigation.navigate('Offers')}>
+            <Text style={styles.ctaText}>See Today's Offers</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader title="My Savings Report" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* Hero stat */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>Total Saved This Week</Text>
+          <Text style={styles.heroLabel}>Saved This Week</Text>
           <Text style={styles.heroAmount}>₹{totalWeek}</Text>
-          <Text style={styles.heroSub}>vs. local market prices</Text>
+          <Text style={styles.heroSub}>₹{totalEver} saved with us so far</Text>
         </View>
 
-        {/* Bar chart (mock) */}
         <View style={styles.sectionCard}>
           <Text style={[typography.subheading, { marginBottom: spacing.md }]}>Daily Breakdown</Text>
           <View style={styles.barChart}>
-            {WEEKLY.map(day => (
-              <View key={day.day} style={styles.barCol}>
-                <Text style={styles.barAmount}>₹{day.saved}</Text>
+            {weekly.map((day, i) => (
+              <View key={i} style={styles.barCol}>
+                <Text style={styles.barAmount}>{day.saved > 0 ? '₹' + day.saved : ''}</Text>
                 <View style={styles.barTrack}>
                   <View
                     style={[
@@ -66,25 +165,6 @@ export function SavingsReportScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* By category */}
-        <View style={styles.sectionCard}>
-          <Text style={[typography.subheading, { marginBottom: spacing.sm }]}>Savings by Category</Text>
-          {CATEGORIES.map((cat, idx) => (
-            <View key={cat.name} style={[styles.catRow, idx < CATEGORIES.length - 1 && styles.catBorder]}>
-              <Text style={styles.catIcon}>{cat.icon}</Text>
-              <Text style={[typography.body, { flex: 1 }]}>{cat.name}</Text>
-              <Text style={styles.catSaved}>₹{cat.saved}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* AI tip */}
-        <View style={styles.tipCard}>
-          <Text style={styles.tipTitle}>🤖 AI Tip for Next Week</Text>
-          <Text style={styles.tipBody}>
-            Buying tomatoes on Monday and Thursday typically saves 18–22% compared to weekends. Consider bundling with onions for an extra 8% discount.
-          </Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -99,6 +179,27 @@ function createStyles(colors: ColorPalette) {
       paddingBottom: spacing.xl * 2,
       gap: spacing.md,
     },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.xl,
+    },
+    centerText: {
+      textAlign: 'center',
+      color: colors.textMuted,
+      marginTop: spacing.xs,
+      lineHeight: 20,
+    },
+    emptyEmoji: { fontSize: 40 },
+    cta: {
+      marginTop: spacing.lg,
+      backgroundColor: colors.primary,
+      borderRadius: radius.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.lg,
+    },
+    ctaText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
     heroCard: {
       backgroundColor: colors.primaryDark,
       borderRadius: radius.xl,
@@ -114,93 +215,40 @@ function createStyles(colors: ColorPalette) {
       letterSpacing: 0.5,
     },
     heroAmount: {
-      fontSize: 48,
+      fontSize: 46,
       fontWeight: '900',
       color: '#FFFFFF',
-      lineHeight: 56,
+      letterSpacing: -1,
     },
-    heroSub: {
-      fontSize: 13,
-      color: 'rgba(255,255,255,0.65)',
-    },
+    heroSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
     sectionCard: {
       backgroundColor: colors.surface,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.border,
       padding: spacing.md,
-      shadowColor: '#000',
-      shadowOpacity: 0.04,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
     },
     barChart: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      height: 120,
-      gap: spacing.xs,
+      justifyContent: 'space-between',
+      height: 150,
     },
-    barCol: {
-      flex: 1,
-      alignItems: 'center',
-      height: '100%',
-      justifyContent: 'flex-end',
-    },
-    barAmount: {
-      fontSize: 9,
-      color: colors.textMuted,
-      marginBottom: 3,
-    },
+    barCol: { flex: 1, alignItems: 'center', gap: 4 },
+    barAmount: { fontSize: 10, fontWeight: '700', color: colors.textMuted, height: 14 },
     barTrack: {
-      width: '70%',
-      height: 80,
+      width: '58%',
+      flex: 1,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radius.sm,
       justifyContent: 'flex-end',
+      overflow: 'hidden',
     },
     barFill: {
       width: '100%',
       backgroundColor: colors.primary,
       borderRadius: radius.sm,
-      minHeight: 4,
     },
-    barDay: {
-      fontSize: 11,
-      color: colors.textMuted,
-      marginTop: 4,
-      fontWeight: '600',
-    },
-    catRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: spacing.sm,
-      gap: spacing.sm,
-    },
-    catBorder: {
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    catIcon: { fontSize: 20, width: 26, textAlign: 'center' },
-    catSaved: {
-      fontSize: 15,
-      fontWeight: '800',
-      color: colors.primary,
-    },
-    tipCard: {
-      backgroundColor: colors.primaryLight,
-      borderRadius: radius.lg,
-      padding: spacing.md,
-      gap: spacing.sm,
-    },
-    tipTitle: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.primary,
-    },
-    tipBody: {
-      fontSize: 13,
-      color: colors.primary,
-      lineHeight: 20,
-      opacity: 0.85,
-    },
+    barDay: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
   });
 }

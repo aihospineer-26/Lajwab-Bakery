@@ -20,6 +20,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders, preflight } from '../_shared/cors.ts';
 
 const FIREBASE_PROJECT_ID = Deno.env.get('FIREBASE_PROJECT_ID') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -154,11 +155,14 @@ function syntheticEmail(phone: string): string {
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
 Deno.serve(async (req) => {
+  const options = preflight(req);
+  if (options) return options;
+
   if (req.method !== 'POST') return json({ error: 'Use POST' }, 405);
 
   if (!FIREBASE_PROJECT_ID || !SUPABASE_URL || !SERVICE_ROLE_KEY) {

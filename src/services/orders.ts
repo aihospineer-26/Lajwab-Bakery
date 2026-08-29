@@ -106,7 +106,11 @@ async function readJson<T>(key: string, fallback: T): Promise<T> {
    the same call sites work either side of sign-in. */
 async function readLocalOrders(): Promise<Order[]> {
   const orders = await readJson<Order[] | null>(LOCAL_ORDERS_KEY, null);
-  if (!orders) return MOCK_ORDERS;
+  /* Sample orders are a development convenience only. Anonymous sign-in is
+     turned off on the project, so a signed-out customer reaches this path for
+     real -- and used to be shown a history of orders they had never placed.
+     Signed out and nothing stored means no orders, which is the truth. */
+  if (!orders) return __DEV__ ? MOCK_ORDERS : [];
   // Normalized on read so orders stored before the status migration still work
   return orders.map(o => ({ ...o, status: normalizeStatus(o.status) }));
 }

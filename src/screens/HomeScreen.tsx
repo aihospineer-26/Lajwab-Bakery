@@ -35,14 +35,6 @@ type Props = CompositeScreenProps<
 
 const TRUST_BADGES = ['100% Eggless', 'Baked Daily', 'Pure Veg', 'Janakpuri'];
 
-const BUNDLE = {
-  name: "Tea-Time Combo",
-  items: 'Khari Puff 250g • Atta Patti 250g • Rusk 200g • Brown Bread',
-  price: 279,
-  mrp: 355,
-  savings: 76,
-};
-
 export function HomeScreen({ navigation }: Props) {
   const columns = useGridColumns();
   const [search, setSearch] = useState('');
@@ -150,22 +142,6 @@ export function HomeScreen({ navigation }: Props) {
                 {/* Promo Banner */}
                 <View style={styles.bannerWrap}>
                   <PromoBanner />
-                </View>
-
-                {/* Today's Cheapest Basket */}
-                <View style={styles.bundleCard}>
-                  <View style={styles.bundleTop}>
-                    <Text style={styles.bundleName}>{BUNDLE.name}</Text>
-                  </View>
-                  <Text style={styles.bundleItems}>{BUNDLE.items}</Text>
-                  <View style={styles.bundleFooter}>
-                    <View>
-                      <Text style={styles.bundlePrice}>₹{BUNDLE.price}</Text>
-                    </View>
-                    <Pressable style={styles.bundleAddAll}>
-                      <Text style={styles.bundleAddAllText}>Add to basket</Text>
-                    </Pressable>
-                  </View>
                 </View>
 
                 {/* Category circles */}
@@ -396,81 +372,6 @@ function createStyles(colors: ColorPalette) {
     /* ── Promo banner ── */
     bannerWrap: {
       marginTop: spacing.md,
-    },
-    /* ── Bundle card ── */
-    bundleCard: {
-      backgroundColor: colors.surface,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: spacing.md,
-      marginTop: spacing.md,
-      shadowColor: '#000',
-      shadowOpacity: 0.04,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
-    },
-    bundleTop: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: spacing.xs,
-    },
-    bundleName: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.text,
-      flex: 1,
-      marginRight: spacing.sm,
-    },
-    bundleBadge: {
-      backgroundColor: colors.primaryLight,
-      borderRadius: radius.sm,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 3,
-    },
-    bundleBadgeText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.primary,
-    },
-    bundleItems: {
-      fontSize: 12,
-      color: colors.textMuted,
-      lineHeight: 18,
-      marginBottom: spacing.sm,
-    },
-    bundleFooter: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    bundlePrice: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: colors.text,
-    },
-    bundleMrp: {
-      fontSize: 11,
-      color: colors.textMuted,
-      textDecorationLine: 'line-through',
-    },
-    bundleAddAll: {
-      backgroundColor: colors.primary,
-      borderRadius: radius.sm,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.lg,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.3,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 3,
-    },
-    bundleAddAllText: {
-      color: '#FFFFFF',
-      fontWeight: '700',
-      fontSize: 13,
     },
     /* ── Category circles ── */
     catLabel: {

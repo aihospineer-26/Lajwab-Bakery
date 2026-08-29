@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,8 +24,6 @@ const STEPS = [
   { id: 'delivery', label: 'Out for Delivery', sub: 'Your rider is on the way!', icon: '🛵' },
   { id: 'delivered', label: 'Delivered', sub: 'Enjoy your order!', icon: '🏠' },
 ];
-
-const RIDER = { name: 'Rajan Kumar', rating: 4.9, vehicle: 'UP81 XY 4402' };
 
 /* Steps auto-advance timings (ms from mount) */
 const STEP_DELAYS = [0, 4000, 10000, 22000];
@@ -80,25 +79,46 @@ export function OrderConfirmationScreen({ navigation }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Rider card */}
+        {/* Same invented rider and same dead call/chat buttons as the tracking
+            screen carried; see the note there. Points at the bakery, and only
+            offers a button STORE can actually dial. */}
         {currentStep >= 2 && !isDelivered ? (
           <View style={styles.riderCard}>
             <View style={styles.riderAvatar}>
-              <Text style={styles.riderInitial}>{RIDER.name.charAt(0)}</Text>
+              <Text style={styles.riderInitial}>🛵</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.riderName}>{RIDER.name}</Text>
-              <View style={styles.riderMeta}>
-                <Text style={styles.riderStar}>⭐ {RIDER.rating}</Text>
-                <Text style={styles.riderVehicle}>{RIDER.vehicle}</Text>
-              </View>
+              <Text style={styles.riderName}>On the way to you</Text>
+              <Text style={styles.riderVehicle}>
+                {STORE.phone || STORE.whatsapp
+                  ? 'Call the bakery if you need to change anything.'
+                  : 'Your order has left ' + STORE.name + '.'}
+              </Text>
             </View>
-            <Pressable style={styles.riderAction} hitSlop={8}>
-              <Ionicons name="call-outline" size={17} color={colors.primary} />
-            </Pressable>
-            <Pressable style={styles.riderAction} hitSlop={8}>
-              <Ionicons name="chatbubble-outline" size={17} color={colors.primary} />
-            </Pressable>
+            {STORE.phone ? (
+              <Pressable
+                style={styles.riderAction}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={'Call ' + STORE.name}
+                onPress={() => Linking.openURL('tel:' + STORE.phone.replace(/\s/g, ''))}
+              >
+                <Ionicons name="call-outline" size={17} color={colors.primary} />
+              </Pressable>
+            ) : null}
+            {STORE.whatsapp ? (
+              <Pressable
+                style={styles.riderAction}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={'Message ' + STORE.name + ' on WhatsApp'}
+                onPress={() =>
+                  Linking.openURL('https://wa.me/' + STORE.whatsapp.replace(/[^0-9]/g, ''))
+                }
+              >
+                <Ionicons name="chatbubble-outline" size={17} color={colors.primary} />
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
 

@@ -10,22 +10,28 @@ import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Wallet'>;
 
-const BALANCE = 280;
+/* Nothing awards coins yet, so the only honest balance is zero. This screen
+   previously showed a ₹280 balance and a transaction history to every customer,
+   including people who had never ordered -- a balance the bakery would have been
+   asked to honour. When the rewards programme is real, this reads from it. */
+type Transaction = {
+  id: string;
+  label: string;
+  amount: number;
+  date: string;
+  type: 'credit' | 'debit';
+};
 
-const TRANSACTIONS = [
-  { id: 't1', label: 'Order #ORD-1042 cashback', amount: +45, date: 'Today', type: 'credit' },
-  { id: 't2', label: 'Referral bonus — Priya S.', amount: +50, date: 'Yesterday', type: 'credit' },
-  { id: 't3', label: 'Redeemed on order #ORD-1031', amount: -100, date: '14 Jun', type: 'debit' },
-  { id: 't4', label: 'Order #ORD-1028 cashback', amount: +30, date: '10 Jun', type: 'credit' },
-  { id: 't5', label: 'Welcome bonus', amount: +100, date: '01 Jun', type: 'credit' },
-  { id: 't6', label: 'Redeemed on order #ORD-1019', amount: -80, date: '02 Jun', type: 'debit' },
-];
+const BALANCE = 0;
+const TRANSACTIONS: Transaction[] = [];
 
+/* Described as planned, not promised: no rule below is being applied to anyone's
+   account today. */
 const HOW_TO_EARN = [
-  { icon: '📦', label: 'Place an order', value: 'Up to ₹50 cashback' },
-  { icon: '👥', label: 'Refer a friend', value: '₹50 per referral' },
-  { icon: '⭐', label: 'Rate your order', value: '₹5 per review' },
-  { icon: '🎂', label: 'Birthday bonus', value: '₹100 on your birthday' },
+  { icon: '📦', label: 'Place an order', value: 'Cashback on every order' },
+  { icon: '👥', label: 'Refer a friend', value: 'Bonus for both of you' },
+  { icon: '⭐', label: 'Rate your order', value: 'Coins for each review' },
+  { icon: '🎂', label: 'Birthday treat', value: 'A little something on the day' },
 ];
 
 export function WalletScreen({ navigation }: Props) {
@@ -45,12 +51,12 @@ export function WalletScreen({ navigation }: Props) {
           <Text style={styles.balanceAmount}>₹{BALANCE}</Text>
           <Text style={styles.balanceSub}>Lajwab Coins · Auto-applied at checkout</Text>
           <View style={styles.balanceBadge}>
-            <Text style={styles.balanceBadgeText}>🌿 Green Member</Text>
+            <Text style={styles.balanceBadgeText}>Coming soon</Text>
           </View>
         </View>
 
         {/* How to earn */}
-        <Text style={styles.sectionTitle}>How to Earn More</Text>
+        <Text style={styles.sectionTitle}>How You'll Earn</Text>
         <View style={styles.earnCard}>
           {HOW_TO_EARN.map((item, idx) => (
             <View key={item.icon} style={[styles.earnRow, idx < HOW_TO_EARN.length - 1 && styles.earnBorder]}>
@@ -63,6 +69,15 @@ export function WalletScreen({ navigation }: Props) {
 
         {/* Transaction history */}
         <Text style={styles.sectionTitle}>Transaction History</Text>
+        {TRANSACTIONS.length === 0 ? (
+          <View style={styles.txEmpty}>
+            <Text style={styles.txEmptyEmoji}>🪙</Text>
+            <Text style={styles.txEmptyTitle}>No coins yet</Text>
+            <Text style={styles.txEmptyBody}>
+              Once Lajwab Coins go live, everything you earn and spend will show up here.
+            </Text>
+          </View>
+        ) : (
         <View style={styles.txCard}>
           {TRANSACTIONS.map((tx, idx) => (
             <View key={tx.id} style={[styles.txRow, idx < TRANSACTIONS.length - 1 && styles.txBorder]}>
@@ -79,6 +94,7 @@ export function WalletScreen({ navigation }: Props) {
             </View>
           ))}
         </View>
+        )}
 
       </ScrollView>
       </ScreenContainer>
@@ -111,6 +127,25 @@ function createStyles(colors: ColorPalette) {
     balanceBadgeText: { fontSize: 12, fontWeight: '700', color: colors.success },
 
     sectionTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
+
+    txEmpty: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      paddingVertical: spacing.xl,
+      paddingHorizontal: spacing.lg,
+      gap: spacing.xs,
+    },
+    txEmptyEmoji: { fontSize: 30 },
+    txEmptyTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+    txEmptyBody: {
+      fontSize: 13,
+      color: colors.textMuted,
+      textAlign: 'center',
+      lineHeight: 19,
+    },
 
     earnCard: {
       backgroundColor: colors.surface,

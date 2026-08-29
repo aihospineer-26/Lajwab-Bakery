@@ -1,10 +1,20 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import {
   clearFirebaseOtp,
   sendFirebaseOtp,
   verifyFirebaseOtp,
 } from '../services/firebaseOtp';
+import {
+  MSG91_AUTH_TOKEN,
+  MSG91_WIDGET_ID,
+  Msg91OtpBridge,
+  msg91OtpRef,
+  sendMsg91Otp,
+  verifyMsg91Otp,
+} from '../services/msg91Otp';
 import {
   OTP_CHANNEL,
   OTP_DEMO_MODE,
@@ -29,6 +39,34 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+/* Everything below is keyed to a person, not to the device, and none of it was
+   being cleared on sign-out -- so the next person to sign in on the same phone
+   inherited the previous one's name, saved payment methods, order history and
+   searches. Deliberately a list rather than AsyncStorage.clear(): the device's
+   own settings (theme, onboarding, the sign-in prompt) belong to the handset
+   and should survive somebody signing out.
+   Anything new that stores per-customer data belongs here too. */
+const DEVICE_USER_KEYS = [
+  'user_profile',
+  'payment_methods',
+  'my_reviews',
+  'notifications_read',
+  'recent_searches',
+  'lajwab.checkout.contact',
+  'local_orders',
+  'local_order_items',
+];
+
+async function clearDeviceUserData(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove(DEVICE_USER_KEYS);
+  } catch (err) {
+    /* Never block the sign-out itself -- being unable to tidy up is far less
+       bad than leaving someone stuck signed in. */
+    console.warn('[auth] could not clear local user data:', err);
+  }
+}
 
 /* Satisfies the UI only. Services read supabase.auth.getSession() directly, so
    they still see no session and keep writing to the preview overlay — the same
@@ -81,9 +119,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const { data: anon, error } = await supabase.auth.signInAnonymously();
-      /* A failure here is not fatal: the app falls back to the signed-out
-         preview overlay rather than blocking someone from browsing. */
-      if (error) console.warn('[auth] anonymous sign-in failed:', error.message);
+      /* Not fatal: browsing works without a session, and checkout asks the
+         customer to sign in anyway. Anonymous sign-ins are currently disabled
+         on the project, so this is the expected path rather than a fault --
+         logged quietly, and only in development, so it does not look like a
+         failure in a production console. */
+      if (error && __DEV__) {
+        console.warn(
+          '[auth] anonymous sign-in unavailable (' + error.message + ') — ' +
+            'browsing continues without a session.',
+        );
+      }
       setSession(anon?.session ?? null);
       setIsLoading(false);
     });
@@ -105,6 +151,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
        this mode. See services/firebaseOtp.ts for why. */
     if (OTP_CHANNEL === 'firebase') {
       return sendFirebaseOtp(mobile);
+    }
+
+    /* Same shape as Firebase: MSG91's widget owns send and verify itself. */
+    if (OTP_CHANNEL === 'msg91') {
+      return sendMsg91Otp(mobile);
     }
 
     /* Sent as the 'sms' channel because that is what the Send SMS Hook
@@ -131,6 +182,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return verifyFirebaseOtp(token);
     }
 
+    if (OTP_CHANNEL === 'msg91') {
+      return verifyMsg91Otp(mobile, token);
+    }
+
     const { error } = await supabase.auth.verifyOtp({
       phone: toE164(mobile),
       token,
@@ -151,6 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearDemoCode();
     clearFirebaseOtp();
     setDemoCode(null);
+    await clearDeviceUserData();
     if (OTP_DEMO_MODE) {
       setSession(null);
       return;
@@ -163,6 +219,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{ session, isLoading, demoCode, sendOtp, verifyOtp, signInWithPassword, signOut }}
     >
       {children}
+      {/* A 1x1 hidden WebView, not a screen -- MSG91's widget owns send/verify
+          itself and this is how the app calls into it. Mounted once here so
+          sendMsg91Otp/verifyMsg91Otp can reach it via msg91OtpRef from
+          anywhere, the same way every other OTP channel exposes plain
+          functions. Only rendered when that channel is actually in use, since
+          it opens a real connection to MSG91's script otherwise.
+
+          react-native-webview has no web implementation at all -- mounting
+          this on web does not fail quietly, it renders visible red error text
+          ("React Native WebView does not support this platform") right on
+          screen. sendMsg91Otp/verifyMsg91Otp fall back to a clear message on
+          web instead; see services/msg91Otp.ts. */}
+      {OTP_CHANNEL === 'msg91' && Platform.OS !== 'web' && (
+        <Msg91OtpBridge
+          ref={msg91OtpRef}
+          widgetId={MSG91_WIDGET_ID}
+          authToken={MSG91_AUTH_TOKEN}
+          /* Printed once, on load, straight from the widget itself -- the
+             quickest way to see its real config (OTP length, retry rules,
+             channel) without opening the MSG91 dashboard at all. */
+          getWidgetData={(data) => {
+            if (__DEV__) console.log('[msg91] widget config:', JSON.stringify(data));
+          }}
+        />
+      )}
     </AuthContext.Provider>
   );
 }

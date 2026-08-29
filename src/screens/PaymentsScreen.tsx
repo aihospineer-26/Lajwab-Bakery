@@ -28,11 +28,14 @@ type PaymentMethod = {
 
 /* Card entries are gateway tokens — only the masked last-4 is ever held here.
    Raw card details are never collected in-app; the payment provider's own
-   sheet handles that at checkout so card data never touches our code. */
+   sheet handles that at checkout so card data never touches our code.
+
+   Only Cash on Delivery is seeded, because it is the one method that is true
+   for everybody without them having added anything. A sample UPI id and card
+   used to sit here and were shown to every customer as their own saved
+   methods — someone else's payment details, as far as they could tell. */
 const DEFAULT_METHODS: PaymentMethod[] = [
-  { id: 'upi', emoji: '📱', label: 'UPI', detail: 'arjun@upi', isDefault: true },
-  { id: 'card', emoji: '💳', label: 'Visa Card', detail: '•••• •••• •••• 4821', isDefault: false },
-  { id: 'cod', emoji: '💵', label: 'Cash on Delivery', detail: 'Pay when it arrives', isDefault: false },
+  { id: 'cod', emoji: '💵', label: 'Cash on Delivery', detail: 'Pay when it arrives', isDefault: true },
 ];
 
 export function PaymentsScreen({ navigation }: Props) {

@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { AppNotification, MOCK_NOTIFICATIONS } from '../data/notifications';
+import { AppNotification } from '../data/notifications';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../state/ThemeContext';
@@ -31,14 +31,22 @@ export function NotificationsScreen({ navigation }: Props) {
      the server later, and read IDs merge cleanly onto whatever it returns. */
   const [readIds, setReadIds] = usePersistedState<string[]>('notifications_read', []);
 
+  /* Nothing produces notifications yet, so there are none to show. This was
+     wired to MOCK_NOTIFICATIONS, which announced a delivered order, a saved
+     address and a weekly savings figure to every customer -- including someone
+     opening the app for the first time. When the server can send these, this
+     is the line that changes; the read-state merge below already handles a real
+     list. */
+  const incoming: AppNotification[] = [];
+
   const notifications = useMemo(
-    () => MOCK_NOTIFICATIONS.map(n => ({ ...n, read: n.read || readIds.includes(n.id) })),
-    [readIds],
+    () => incoming.map(n => ({ ...n, read: n.read || readIds.includes(n.id) })),
+    [incoming, readIds],
   );
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAllRead = () => setReadIds(MOCK_NOTIFICATIONS.map(n => n.id));
+  const markAllRead = () => setReadIds(notifications.map(n => n.id));
   const markRead = (id: string) =>
     setReadIds(prev => (prev.includes(id) ? prev : [...prev, id]));
 

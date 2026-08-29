@@ -2,10 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Order } from '../data/orders';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
+import { fetchOrders } from '../services/orders';
 import { useAuth } from '../state/AuthContext';
 import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
@@ -33,10 +35,22 @@ export function AccountScreen({ navigation }: Props) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { signOut, session } = useAuth();
-  const { profile } = useUserProfile();
+  const { profile, displayName, initials } = useUserProfile();
 
-  const displayName = profile.name;
-  const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const [orders, setOrders] = useState<Order[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchOrders()
+      .then((list) => { if (!cancelled) setOrders(list); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const orderCount = orders.length;
+  const totalSaved = orders.reduce(
+    (sum, o) => sum + (o.status === 'cancelled' ? 0 : o.discount ?? 0),
+    0,
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -46,28 +60,30 @@ export function AccountScreen({ navigation }: Props) {
           <Text style={styles.avatarInitial}>{initials}</Text>
         </View>
         <Text style={styles.headerName}>{displayName}</Text>
-        <Text style={styles.headerEmail}>{profile.email}</Text>
+        {/* Signing in by phone leaves us no email and no name, so the line below
+            the heading would just be blank. Point at the fix instead. */}
+        <Text style={styles.headerEmail}>
+          {profile.email || (profile.name ? profile.phone : 'Tap ✏️ to add your name')}
+        </Text>
         <Pressable style={styles.editBtn} onPress={() => (navigation as any).navigate('Profile')} hitSlop={10}>
           <Ionicons name="pencil" size={14} color={colors.textOnPrimary} />
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Stats row */}
+        {/* Real counts from the customer's own orders. These were fixed at
+            ₹0 / 0 / "Gold" for everyone, which both understated a real
+            customer and contradicted the Profile screen's hardcoded 3. The
+            tier is gone until there is a programme behind it. */}
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
-              <Text style={styles.statValue}>₹0</Text>
+            <Text style={styles.statValue}>₹{totalSaved}</Text>
             <Text style={styles.statLabel}>Total Saved</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-              <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{orderCount}</Text>
             <Text style={styles.statLabel}>Orders</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-              <Text style={styles.statValue}>Gold</Text>
-            <Text style={[styles.statLabel, styles.goldBadge]}>Member</Text>
           </View>
         </View>
 
@@ -211,10 +227,6 @@ function createStyles(colors: ColorPalette) {
       fontSize: 11,
       color: colors.textMuted,
       fontWeight: '500',
-    },
-    goldBadge: {
-      color: colors.accent,
-      fontWeight: '700',
     },
     statDivider: {
       width: 1,

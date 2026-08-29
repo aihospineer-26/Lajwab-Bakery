@@ -24,7 +24,14 @@ import { useAuth } from '../state/AuthContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+/* One screen, two routes: 'Login' is the checkout gate, 'SignInPrompt' is the
+   optional greeting at first launch.
+   onSkip is passed only for the latter, and its presence is what renders the
+   Skip control -- there is nothing to skip to when the customer came here from
+   the cart. */
+type Props = NativeStackScreenProps<RootStackParamList, 'Login' | 'SignInPrompt'> & {
+  onSkip?: () => void;
+};
 
 function ci(filename: string) {
   return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=200`;
@@ -105,7 +112,7 @@ function ScrollRow({ images, tileSize, goRight, duration, bgColor }: ScrollRowPr
   );
 }
 
-export function LoginScreen({ navigation }: Props) {
+export function LoginScreen({ navigation, onSkip }: Props) {
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -142,6 +149,17 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {onSkip ? (
+        <Pressable
+          style={styles.skip}
+          onPress={onSkip}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Skip sign-in and browse the shop"
+        >
+          <Text style={styles.skipText}>Skip</Text>
+        </Pressable>
+      ) : null}
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -225,6 +243,19 @@ function createStyles(colors: ColorPalette) {
     container: { flex: 1, backgroundColor: colors.background },
     flex: { flex: 1 },
     scroll: { flexGrow: 1 },
+
+    /* Floats above the mosaic rather than sitting in the scroll, so it stays
+       reachable without scrolling back up. Quiet on purpose -- signing in is
+       the encouraged path, skipping is the escape hatch. */
+    skip: {
+      position: 'absolute',
+      top: spacing.md,
+      right: spacing.md,
+      zIndex: 10,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+    },
+    skipText: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
 
     mosaic: {
       overflow: 'hidden',

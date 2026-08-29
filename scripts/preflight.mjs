@@ -197,7 +197,26 @@ if (url && key) {
 
     const otp = group('OTP delivery (channel: ' + channel + ')');
     const needed =
-      channel === 'firebase' ? 'firebase-otp-bridge' : channel === 'demo' ? null : 'whatsapp-otp';
+      channel === 'firebase' ? 'firebase-otp-bridge' :
+      channel === 'msg91' ? 'msg91-otp-bridge' :
+      channel === 'demo' ? null : 'whatsapp-otp';
+
+    if (channel === 'msg91') {
+      const MSG91_KEYS = ['EXPO_PUBLIC_MSG91_WIDGET_ID', 'EXPO_PUBLIC_MSG91_AUTH_TOKEN'];
+      const missing = MSG91_KEYS.filter((k) => !env?.[k]);
+      if (missing.length === 0) {
+        otp.ok('MSG91 widget config is set');
+      } else {
+        otp.fail(
+          'MSG91 widget config missing (' + missing.length + ' of 2)',
+          'MSG91 dashboard -> OTP -> Widgets, then fill these in .env.local: ' + missing.join(', '),
+        );
+      }
+      otp.warn(
+        'MSG91 phone verification not yet confirmed against a real number',
+        'send a real OTP once and check the app for the result -- this tool cannot trigger the widget itself',
+      );
+    }
 
     if (channel === 'firebase') {
       /* Native reads google-services.json; the website reads these four. Both

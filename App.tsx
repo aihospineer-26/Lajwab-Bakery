@@ -266,7 +266,34 @@ function RootNavigator() {
     });
   }, []);
 
-  if (isLoading || !onboardingChecked) return null;
+  /* Sign-in is offered first but never forced. Skipping is remembered, so the
+     prompt appears once rather than greeting a browsing customer on every
+     launch -- a wall they have already declined is just friction the second
+     time. Checkout still requires an account either way. */
+  const [signInPromptChecked, setSignInPromptChecked] = React.useState(false);
+  const [showSignInFirst, setShowSignInFirst] = React.useState(false);
+
+  React.useEffect(() => {
+    AsyncStorage.getItem('signin_prompt_dismissed').then(val => {
+      setShowSignInFirst(!val);
+      setSignInPromptChecked(true);
+    });
+  }, []);
+
+  const dismissSignInPrompt = React.useCallback(() => {
+    setShowSignInFirst(false);
+    AsyncStorage.setItem('signin_prompt_dismissed', '1');
+  }, []);
+
+  /* A customer who signs in has answered the prompt; keep it from reappearing
+     if they later sign out and reopen. */
+  React.useEffect(() => {
+    if (session) dismissSignInPrompt();
+  }, [session, dismissSignInPrompt]);
+
+  if (isLoading || !onboardingChecked || !signInPromptChecked) return null;
+
+  const promptSignIn = showSignInFirst && !session && !needsOnboarding && mode !== 'delivery';
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
@@ -278,10 +305,15 @@ function RootNavigator() {
         <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
       ) : (
         <>
+          {/* Sign-in is offered first, but the catalog stays public: skipping
+              lands on MainTabs and checkout asks again there. So a bad OTP
+              night costs orders, not the whole app. */}
+          {promptSignIn && (
+            <Stack.Screen name="SignInPrompt">
+              {props => <LoginScreen {...props} onSkip={dismissSignInPrompt} />}
+            </Stack.Screen>
+          )}
           <Stack.Screen name="MainTabs" component={MainTabs} />
-          {/* Browsing needs no account -- the catalog is public. Sign-in is
-              required at checkout instead, so a delivery problem with the OTP
-              costs one order rather than locking every customer out. */}
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="VerifyOtp" component={OtpScreen} />
           <Stack.Screen name="Category" component={CategoryScreen} />

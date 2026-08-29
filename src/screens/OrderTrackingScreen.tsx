@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -40,7 +41,6 @@ const STATUS_TO_STEP: Record<OrderStatus, number> = {
   cancelled: 0,
 };
 
-const MOCK_RIDER = { name: 'Rajan Kumar', rating: 4.9, vehicle: 'UP81 XY 4402' };
 
 export function OrderTrackingScreen({ navigation, route }: Props) {
   const { orderId, status } = route.params;
@@ -162,26 +162,49 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        {/* Rider card — show when out for delivery */}
+        {/* Shown once the order is out for delivery. This used to name a rider
+            ("Rajan Kumar ⭐4.9, UP81 XY 4402") who does not exist, beside call
+            and chat buttons that did nothing when tapped — on the one screen a
+            customer opens precisely because they want to reach somebody. Nobody
+            is assigned to orders yet, so it points at the bakery instead, and
+            the buttons only appear when STORE actually has a number to dial. */}
         {currentStep >= 2 && !isDelivered && !isCancelled ? (
           <View style={styles.riderCard}>
             <View style={styles.riderAvatar}>
-              <Text style={styles.riderInitial}>{MOCK_RIDER.name.charAt(0)}</Text>
+              <Text style={styles.riderInitial}>🛵</Text>
             </View>
             <View style={styles.riderInfo}>
-              <Text style={styles.riderName}>{MOCK_RIDER.name}</Text>
-              <View style={styles.riderMeta}>
-                <Text style={styles.riderDetail}>⭐ {MOCK_RIDER.rating}</Text>
-                <Text style={styles.riderDot}>·</Text>
-                <Text style={styles.riderDetail}>{MOCK_RIDER.vehicle}</Text>
-              </View>
+              <Text style={styles.riderName}>On the way to you</Text>
+              <Text style={styles.riderDetail}>
+                {STORE.phone || STORE.whatsapp
+                  ? 'Need it sooner, or somewhere else? Call the bakery.'
+                  : 'Your order has left ' + STORE.name + '.'}
+              </Text>
             </View>
-            <Pressable style={styles.riderBtn} hitSlop={8}>
-              <Ionicons name="call-outline" size={17} color={colors.primary} />
-            </Pressable>
-            <Pressable style={styles.riderBtn} hitSlop={8}>
-              <Ionicons name="chatbubble-outline" size={17} color={colors.primary} />
-            </Pressable>
+            {STORE.phone ? (
+              <Pressable
+                style={styles.riderBtn}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={'Call ' + STORE.name}
+                onPress={() => Linking.openURL('tel:' + STORE.phone.replace(/\s/g, ''))}
+              >
+                <Ionicons name="call-outline" size={17} color={colors.primary} />
+              </Pressable>
+            ) : null}
+            {STORE.whatsapp ? (
+              <Pressable
+                style={styles.riderBtn}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={'Message ' + STORE.name + ' on WhatsApp'}
+                onPress={() =>
+                  Linking.openURL('https://wa.me/' + STORE.whatsapp.replace(/[^0-9]/g, ''))
+                }
+              >
+                <Ionicons name="chatbubble-outline" size={17} color={colors.primary} />
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
 

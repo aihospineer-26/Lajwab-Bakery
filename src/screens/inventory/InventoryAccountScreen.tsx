@@ -12,7 +12,7 @@ import { ColorPalette, radius, spacing } from '../../theme';
 export function InventoryAccountScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { profile } = useUserProfile();
+  const { profile, displayName, initials } = useUserProfile();
   const { products, categories } = useCatalog();
   const { signOut, session } = useAuth();
 
@@ -22,9 +22,9 @@ export function InventoryAccountScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{profile.name.charAt(0)}</Text>
+              <Text style={styles.avatarText}>{initials}</Text>
             </View>
-            <Text style={styles.profileName}>{profile.name}</Text>
+            <Text style={styles.profileName}>{displayName}</Text>
             <Text style={styles.profileEmail}>{profile.email}</Text>
             <View style={styles.roleBadge}>
               <Ionicons name="storefront-outline" size={13} color={colors.primary} />

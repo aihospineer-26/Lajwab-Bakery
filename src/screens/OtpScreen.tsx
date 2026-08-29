@@ -58,8 +58,22 @@ export function OtpScreen({ route, navigation }: Props) {
     setIsVerifying(true);
     const verifyError = await verifyOtp(mobile, value);
     setIsVerifying(false);
-    /* On success the session lands and the root navigator swaps this screen
-       out, so there is nothing to navigate to here. */
+
+    /* Nothing removes this screen on success -- Login and VerifyOtp are always
+       mounted, so a signed-in customer would otherwise be left staring at the
+       code boxes. Return them to whatever sent them here: the cart if they
+       came from checkout, the shop if this was the greeting at first launch. */
+    if (!verifyError) {
+      const routes = navigation.getState().routes;
+      const gate = routes.findIndex((r) => r.name === 'Login' || r.name === 'SignInPrompt');
+      if (gate > 0) {
+        navigation.pop(routes.length - gate);
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      }
+      return;
+    }
+
     if (verifyError) {
       setError(verifyError);
       setCode('');

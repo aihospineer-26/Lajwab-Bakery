@@ -10,8 +10,11 @@ import { isSupabaseConfigured } from './supabase';
  *   whatsapp  Supabase mints the code, the Send SMS Hook delivers it
  *   firebase  Firebase owns send and verify, then we swap its token for a
  *             Supabase session (see supabase/functions/firebase-otp-bridge)
+ *   msg91     MSG91's widget owns send and verify (real SMS, no DLT needed on
+ *             their default template), then we swap its access-token for a
+ *             Supabase session (see supabase/functions/msg91-otp-bridge)
  */
-export type OtpChannel = 'none' | 'demo' | 'whatsapp' | 'firebase';
+export type OtpChannel = 'none' | 'demo' | 'whatsapp' | 'firebase' | 'msg91';
 
 function resolveChannel(): OtpChannel {
   if (process.env.EXPO_PUBLIC_OTP_MODE === 'demo') return 'demo';
@@ -20,6 +23,7 @@ function resolveChannel(): OtpChannel {
   if (
     channel === 'none' ||
     channel === 'firebase' ||
+    channel === 'msg91' ||
     channel === 'whatsapp' ||
     channel === 'demo'
   ) {
@@ -31,7 +35,18 @@ function resolveChannel(): OtpChannel {
 export const OTP_CHANNEL: OtpChannel = resolveChannel();
 export const OTP_DEMO_MODE = OTP_CHANNEL === 'demo';
 
-export const OTP_LENGTH = 6;
+/* Set by whoever sends the code, not by us -- MSG91's widget defaults to 4
+   digits while Supabase's own SMS is 6. Hardcoding either one silently breaks
+   sign-in on the other: the boxes never fill, so auto-submit never fires and
+   the Verify button stays disabled forever. Change the widget's OTP length in
+   the MSG91 dashboard and this must change with it. */
+function resolveOtpLength(): number {
+  const raw = Number(process.env.EXPO_PUBLIC_OTP_LENGTH);
+  if (Number.isInteger(raw) && raw >= 4 && raw <= 8) return raw;
+  return OTP_CHANNEL === 'msg91' ? 4 : 6;
+}
+
+export const OTP_LENGTH = resolveOtpLength();
 export const RESEND_SECONDS = 30;
 
 const COUNTRY_CODE = '+91';
@@ -76,4 +91,5 @@ export const CHANNEL_LABEL: Record<OtpChannel, string> = {
   demo: 'on screen',
   whatsapp: 'on WhatsApp',
   firebase: 'by SMS',
+  msg91: 'by SMS',
 };

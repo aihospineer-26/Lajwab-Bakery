@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,7 +14,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
+import { Order } from '../data/orders';
 import { RootStackParamList } from '../navigation/types';
+import { fetchOrders } from '../services/orders';
 import { useAuth } from '../state/AuthContext';
 import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
@@ -25,21 +27,37 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 export function ProfileScreen({ navigation }: Props) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { signOut } = useAuth();
-  const { profile, updateProfile } = useUserProfile();
+  const { signOut, session } = useAuth();
+  const { profile, displayName, initials, updateProfile } = useUserProfile();
+
+  const [orders, setOrders] = useState<Order[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchOrders()
+      .then((list) => { if (!cancelled) setOrders(list); })
+      .catch(() => { if (!cancelled) setOrders(null); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const orderCountLabel =
+    orders === null ? '—' : orders.length === 1 ? '1 order' : orders.length + ' orders';
+
+  /* created_at is when the account was actually made; an em dash beats inventing
+     a date for an anonymous session that has no meaningful start. */
+  const memberSince = useMemo(() => {
+    const raw = session?.user?.created_at;
+    if (!raw) return '—';
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime())
+      ? '—'
+      : d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  }, [session]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [name, setName] = useState(profile.name);
   const [email, setEmail] = useState(profile.email);
   const [phone, setPhone] = useState(profile.phone);
-
-  const initials = profile.name
-    .split(' ')
-    .map(w => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
 
   /* Seeds from the current profile, which may have hydrated after first render */
   const startEditing = () => {
@@ -79,8 +97,10 @@ export function ProfileScreen({ navigation }: Props) {
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
-            <Text style={styles.avatarName}>{profile.name}</Text>
-            <Text style={styles.avatarEmail}>{profile.email}</Text>
+            <Text style={styles.avatarName}>{displayName}</Text>
+            <Text style={styles.avatarEmail}>
+              {profile.email || (profile.name ? profile.phone : 'No name added yet')}
+            </Text>
             {!isEditing && (
               <Pressable style={styles.editChip} onPress={startEditing}>
                 <Text style={styles.editChipText}>✏️  Edit Profile</Text>
@@ -133,21 +153,16 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
           )}
 
-          {/* Account info */}
+          {/* A "Gold Member" tier and a fixed "3 orders" used to sit here,
+              hardcoded -- so every customer had ordered three times, while the
+              Account screen two taps away said zero. Only what we actually
+              know is shown now. */}
           <View style={styles.card}>
-            <View style={styles.infoRow}>
-              <Ionicons name="ribbon-outline" size={16} color={colors.textMuted} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.infoLabel}>Membership</Text>
-                <Text style={styles.infoValue}>Gold Member</Text>
-              </View>
-            </View>
-            <View style={styles.divider} />
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Member Since</Text>
-                <Text style={styles.infoValue}>June 2026</Text>
+                <Text style={styles.infoValue}>{memberSince}</Text>
               </View>
             </View>
             <View style={styles.divider} />
@@ -155,7 +170,7 @@ export function ProfileScreen({ navigation }: Props) {
               <Ionicons name="cube-outline" size={16} color={colors.textMuted} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Total Orders</Text>
-                <Text style={styles.infoValue}>3 orders</Text>
+                <Text style={styles.infoValue}>{orderCountLabel}</Text>
               </View>
             </View>
           </View>

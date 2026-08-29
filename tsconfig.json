@@ -1,7 +1,14 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    "paths": {
+      /* Redirects type-checking only -- the package ships raw, uncompiled
+         .tsx with no .d.ts, so tsc otherwise walks into its source and hits
+         its own pre-existing type errors. Metro does not read this and still
+         bundles the real package at runtime. See src/types/msg91-sendotp.d.ts */
+      "@msg91comm/react-native-sendotp": ["./src/types/msg91-sendotp.d.ts"]
+    }
   },
   "exclude": [
     "node_modules",

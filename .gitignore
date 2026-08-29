@@ -59,3 +59,4 @@ GoogleService-Info.plist
 
 # Supabase CLI scratch space
 supabase/.temp/
+.env.msg91
