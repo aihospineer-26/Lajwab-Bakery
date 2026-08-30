@@ -9,8 +9,18 @@ export type Product = {
   description: string;
 };
 
-/* Placeholder prices — realistic Delhi bakery rates, to be replaced with
-   Lajwab's actual price list. Everything here is 100% eggless and pure veg.
+/* Prices still need the owner's sign-off. Everything is 100% eggless, pure veg.
+ *
+ * Four came off the bakery's own public listing (magicpin, Aug 2026) and are
+ * the only ones with a source behind them: butterscotch and black forest
+ * pastries at ₹45, pineapple pastry at ₹40, paneer patty at ₹45. Three of those
+ * had been guessed 25–33% HIGH -- the butterscotch pastry was ₹60 here against
+ * ₹45 on their menu -- which is worth knowing before trusting any of the rest.
+ * Aggregator listings also go stale and can carry a delivery markup, so even
+ * these four want confirming at the counter.
+ *
+ * The remaining 32 are still invented. Assume every one is wrong until the
+ * owner says otherwise.
  *
  * `mrp` is deliberately unset everywhere. Two products carried one -- the
  * thaali struck through at ₹1851 and the black forest cake at ₹600 -- which
@@ -36,11 +46,11 @@ export const products: Product[] = [
   { id: 'lb-cake-oreo', name: 'Oreo Cake', unit: '500g', price: 600, image: '🎂', categoryId: 'cakes', description: 'Cookies-and-cream layers finished with crushed Oreo. A favourite with kids. Eggless.' },
   { id: 'lb-cake-butterscotch', name: 'Butter Scotch Cake', unit: '500g', price: 550, image: '🎂', categoryId: 'cakes', description: 'Caramel butterscotch cream with praline crunch through every layer. Eggless.' },
 
-  { id: 'lb-pastry-butterscotch', name: 'Butter Scotch Pastry', unit: '1 pc', price: 60, image: '🍰', categoryId: 'pastries', description: 'The one our regulars come back for — caramel cream and praline crunch. Eggless.' },
-  { id: 'lb-pastry-pineapple', name: 'Pineapple Pastry', unit: '1 pc', price: 50, image: '🍰', categoryId: 'pastries', description: 'Soft vanilla sponge with pineapple and fresh cream. Eggless.' },
+  { id: 'lb-pastry-butterscotch', name: 'Butter Scotch Pastry', unit: '1 pc', price: 45, image: '🍰', categoryId: 'pastries', description: 'The one our regulars come back for — caramel cream and praline crunch. Eggless.' },
+  { id: 'lb-pastry-pineapple', name: 'Pineapple Pastry', unit: '1 pc', price: 40, image: '🍰', categoryId: 'pastries', description: 'Soft vanilla sponge with pineapple and fresh cream. Eggless.' },
   { id: 'lb-pastry-chocolate', name: 'Chocolate Pastry', unit: '1 pc', price: 55, image: '🍰', categoryId: 'pastries', description: 'Chocolate sponge with smooth chocolate cream. Eggless.' },
   { id: 'lb-pastry-truffle', name: 'Truffle Pastry', unit: '1 pc', price: 65, image: '🍰', categoryId: 'pastries', description: 'Dense dark chocolate truffle in single-serve form. Eggless.' },
-  { id: 'lb-pastry-blackforest', name: 'Black Forest Pastry', unit: '1 pc', price: 60, image: '🍰', categoryId: 'pastries', description: 'Cherry, cream and chocolate sponge. Eggless.' },
+  { id: 'lb-pastry-blackforest', name: 'Black Forest Pastry', unit: '1 pc', price: 45, image: '🍰', categoryId: 'pastries', description: 'Cherry, cream and chocolate sponge. Eggless.' },
 
   { id: 'lb-bread-wheat', name: 'Whole Wheat Bread', unit: '400g', price: 50, image: '🍞', categoryId: 'breads', description: 'Baked fresh every morning with 100% whole wheat atta.' },
   { id: 'lb-bread-multigrain', name: 'Multi Grain Bread', unit: '400g', price: 60, image: '🍞', categoryId: 'breads', description: 'Five grains and seeds in a soft, everyday loaf.' },
@@ -58,7 +68,7 @@ export const products: Product[] = [
   { id: 'lb-cookie-attapatti', name: 'Atta Patti', unit: '250g', price: 120, image: '🍪', categoryId: 'cookies', description: 'Traditional whole-wheat patti biscuits, a tea-time staple.' },
 
   { id: 'lb-patty-aloo', name: 'Aloo Patty', unit: '1 pc', price: 30, image: '🥟', categoryId: 'savouries', description: 'Flaky puff pastry with spiced potato filling. Served warm.' },
-  { id: 'lb-patty-paneer', name: 'Paneer Patty', unit: '1 pc', price: 40, image: '🥟', categoryId: 'savouries', description: 'Puff pastry filled with masala paneer.' },
+  { id: 'lb-patty-paneer', name: 'Paneer Patty', unit: '1 pc', price: 45, image: '🥟', categoryId: 'savouries', description: 'Puff pastry filled with masala paneer.' },
   { id: 'lb-patty-mushroom', name: 'Mushroom Patty', unit: '1 pc', price: 40, image: '🥟', categoryId: 'savouries', description: 'Creamy mushroom filling in crisp puff pastry.' },
   { id: 'lb-khari-puff', name: 'Khari Puff', unit: '250g', price: 100, image: '🥐', categoryId: 'savouries', description: 'Light, flaky salted khari — the classic chai companion.' },
   { id: 'lb-soup-sticks', name: 'Soup Sticks', unit: '200g', price: 90, image: '🥖', categoryId: 'savouries', description: 'Crunchy baked sticks, lightly salted.' },

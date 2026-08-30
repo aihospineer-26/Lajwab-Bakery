@@ -13,13 +13,23 @@ export const STORE = {
   city: 'New Delhi',
   pincode: '110058',
 
-  /* Tapped from the support screen. Include the country code: '+919876543210' */
-  phone: '',
+  /* Tapped from the support screen. Include the country code: '+919876543210'
+   *
+   * CONFIRM WITH THE BAKERY. Taken from their own public listings, not from
+   * them directly: District (Zomato's dining site) and Justdial both give this
+   * number against Shop 9/9, Chhoti Subzi Mandi. magicpin lists 8800474740
+   * instead, which is more likely that aggregator's own routing line than the
+   * shop's. If a customer taps Call and reaches a stranger, this is why. */
+  phone: '+919958989879',
   whatsapp: '',
   email: '',
 
-  /* Shown on the support screen and in the order confirmation. */
-  hours: 'Mon–Sun, 9:00 am – 9:00 pm',
+  /* Shown on the support screen and in the order confirmation.
+     Also from the listings above, which agree on 8:30 am – 10:30 pm. The
+     previous value here (9 to 9) was a guess and closed the shop 90 minutes
+     early -- worth confirming, because it decides when the app stops taking
+     orders. */
+  hours: 'Mon–Sun, 8:30 am – 10:30 pm',
 
   /* Legally required to be displayed by a food business in India. The support
      screen hides the line entirely while this is empty. */
