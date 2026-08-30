@@ -192,7 +192,10 @@ function AppContent() {
     <AuthProvider>
       <UserProfileProvider>
         <CatalogProvider>
-          <NavigationContainer theme={navigationTheme}>
+          <NavigationContainer
+            theme={navigationTheme}
+            documentTitle={{ formatter: () => 'Lajwab Bakery — Staff' }}
+          >
             <RootNavigator />
           </NavigationContainer>
           <StatusBar style={isDark ? 'light' : 'dark'} />

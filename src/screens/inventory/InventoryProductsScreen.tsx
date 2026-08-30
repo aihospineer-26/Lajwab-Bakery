@@ -117,10 +117,16 @@ export function InventoryProductsScreen() {
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? id;
 
   const handleDelete = async (product: ProductWithStock) => {
+    /* The old copy implied this might be refused for a product with order
+       history. It never is -- there is no foreign key, by design -- so the
+       confirmation has to carry the weight instead, and point at the reversible
+       option the bakery already uses every morning. */
     const ok = await confirm(
-      `Delete ${product.name}?`,
-      'This removes it from the catalogue immediately. Customers will no longer see it.',
-      'Delete',
+      `Permanently delete ${product.name}?`,
+      'This cannot be undone. Past orders keep their own record of the name and price, ' +
+        'but the item itself is gone and would have to be added again from scratch.\n\n' +
+        'To just take it off sale, set its stock to 0 on the Stock tab instead.',
+      'Delete forever',
       'Cancel',
     );
     if (!ok) return;

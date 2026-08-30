@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -240,6 +241,35 @@ export function InventoryOrdersScreen() {
 
         {isExpanded && (
           <View style={styles.itemsBox}>
+            {/* Who to hand it to and what number to ring on the way. The first
+                thing the baker needs and the last thing to be added -- orders
+                carried neither until migration 004. Rows placed before it have
+                no contact, so the block hides rather than showing a blank. */}
+            {order.customerName || order.customerPhone ? (
+              <View style={styles.contactBox}>
+                <View style={styles.addressHead}>
+                  <Feather name="user" size={12} color={colors.primary} />
+                  <Text style={styles.addressLabel}>
+                    {order.customerName ?? 'Name not recorded'}
+                  </Text>
+                </View>
+                {order.customerPhone ? (
+                  <Pressable
+                    onPress={() => Linking.openURL('tel:+91' + order.customerPhone)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={'Call ' + (order.customerName ?? 'the customer')}
+                  >
+                    <Text style={styles.contactPhone}>
+                      <Feather name="phone" size={12} /> +91 {order.customerPhone}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Text style={styles.addressText}>No phone recorded</Text>
+                )}
+              </View>
+            ) : null}
+
             {/* Orders placed before migration 002 have no address recorded. */}
             {order.deliveryAddress ? (
               <View style={styles.addressBox}>
@@ -669,6 +699,21 @@ function createStyles(colors: ColorPalette) {
       gap: spacing.sm,
     },
     itemsEmpty: { fontSize: 12, color: colors.textMuted },
+    contactBox: {
+      gap: 2,
+      paddingBottom: spacing.sm,
+      marginBottom: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    /* Deliberately the most prominent line in the card: the baker reaches for
+       it before anything else when an order needs a question answered. */
+    contactPhone: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.primary,
+      paddingVertical: 2,
+    },
     addressBox: {
       gap: 2,
       paddingBottom: spacing.sm,

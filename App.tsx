@@ -363,7 +363,13 @@ function AppContent() {
           <CartProvider>
             <LocationProvider>
               <SidePanelProvider>
-                <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+                {/* Without a formatter, React Navigation puts the route name in
+                    the browser tab, so the shop bookmarked as "MainTabs". */}
+                <NavigationContainer
+                  ref={navigationRef}
+                  theme={navigationTheme}
+                  documentTitle={{ formatter: () => 'Lajwab Bakery' }}
+                >
                   <RootNavigator />
                 </NavigationContainer>
                 <SidePanel />

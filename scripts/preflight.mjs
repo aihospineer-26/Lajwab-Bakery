@@ -156,6 +156,78 @@ if (url && key) {
       db.ok('place_order accepts order details');
     }
 
+    /* ---------------------------------------------------------- migration 004
+       This block exists because 003 sat in the repo unapplied for days while
+       every check above stayed green: the app collected a name and a verified
+       phone, sent both, and the older place_order dropped them, so orders
+       reached the bakery with nobody to ring. Checking columns is not enough --
+       a schema can carry the columns while an older function ignores them --
+       so each item below tests the behaviour that actually has to hold. */
+
+    const contact = await get('/rest/v1/orders?select=customer_name,customer_phone&limit=1');
+    if (contact.ok) {
+      db.ok('orders carry the customer name and phone');
+    } else {
+      db.fail(
+        'migration 004 is NOT applied -- orders reach the bakery with no name and no phone',
+        'open the Supabase SQL editor, paste all of supabase/migrations/004_remediation.sql, press Run',
+      );
+    }
+
+    const reqId = await get('/rest/v1/orders?select=request_id&limit=1');
+    if (reqId.ok) {
+      db.ok('checkout idempotency key is present');
+    } else {
+      db.fail(
+        'orders.request_id is missing -- a double-tapped checkout places two orders',
+        'part of migration 004',
+      );
+    }
+
+    const pins = await get('/rest/v1/serviceable_pincodes?select=pincode&active=is.true');
+    if (pins.ok) {
+      const rows = await pins.json().catch(() => []);
+      if (Array.isArray(rows) && rows.length > 0) {
+        db.ok('delivery area is set server-side (' + rows.map((p) => p.pincode).join(', ') + ')');
+      } else {
+        db.fail(
+          'serviceable_pincodes is empty -- every order will be refused as out of area',
+          'insert the pincodes the bakery delivers to',
+        );
+      }
+    } else {
+      db.fail(
+        'serviceable_pincodes is missing -- the delivery area is enforced only in the app',
+        'part of migration 004',
+      );
+    }
+
+    /* The columns can exist while an older place_order ignores them, so prove a
+       function 004 introduced is actually installed and behaves. This runs with
+       the anon key and no session, which is as deep as a launch checklist can
+       reach -- place_order itself refuses an unauthenticated caller before any
+       validation, so it cannot be probed from here. The behaviour of the order
+       path proper is covered by the end-to-end suite, which signs in. */
+    const norm = await fetch(url + '/rest/v1/rpc/normalise_mobile', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: '+91 98765 43210' }),
+    });
+    const normBody = (await norm.text()).replace(/"/g, '').trim();
+    if (norm.ok && normBody === '9876543210') {
+      db.ok('phone normalisation is live (place_order is the 004 version)');
+    } else if (norm.status === 404) {
+      db.fail(
+        'normalise_mobile is missing -- place_order is an older version that drops the customer phone',
+        'open the Supabase SQL editor, paste all of supabase/migrations/004_remediation.sql, press Run',
+      );
+    } else {
+      db.fail(
+        'normalise_mobile returned ' + JSON.stringify(normBody) + ', expected "9876543210"',
+        're-run supabase/migrations/004_remediation.sql',
+      );
+    }
+
     /* ------------------------------------------------------ customer sign-in */
 
     if (channel === 'none') {

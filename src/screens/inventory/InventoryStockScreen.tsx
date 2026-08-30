@@ -17,6 +17,7 @@ import { ScreenContainer } from '../../components/ScreenContainer';
 import { Skeleton } from '../../components/Skeleton';
 import { ProductWithStock } from '../../services/catalog';
 import { LOW_STOCK_THRESHOLD, resetAllStock, updateStock } from '../../services/inventory';
+import { fetchOrdersToday } from '../../services/orders';
 import { useCatalog } from '../../state/CatalogContext';
 import { useTheme } from '../../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../../theme';
@@ -78,10 +79,27 @@ export function InventoryStockScreen() {
     [stockOf],
   );
 
-  const handleStartOfDay = useCallback(() => {
+  const handleStartOfDay = useCallback(async () => {
+    /* Zeroing everything overwrites the counts sales have already moved, so an
+       order taken this morning stops being visible in stock. Harmless first
+       thing; quietly wrong once the day has started, which is why the warning
+       names how many orders are already in. */
+    let openToday = 0;
+    try {
+      const todays = await fetchOrdersToday();
+      openToday = todays.length;
+    } catch {
+      /* the count is a courtesy -- never block the morning routine on it */
+    }
+
     Alert.alert(
       'Start of day',
-      'Mark every item sold out, then enter what you baked today. This clears all current counts.',
+      openToday > 0
+        ? `You have already taken ${openToday} order${openToday === 1 ? '' : 's'} today. ` +
+            'Marking everything sold out overwrites the counts those orders have already ' +
+            'reduced, so what they used will no longer show anywhere.\n\n' +
+            'Enter what you baked afterwards.'
+        : 'Mark every item sold out, then enter what you baked today. This clears all current counts.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

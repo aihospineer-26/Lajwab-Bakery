@@ -1,6 +1,17 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
 import { calculateDiscount, Coupon, findCoupon } from '../data/offers';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { useCatalog } from './CatalogContext';
+
+/* The cart used to live in plain component state, so backgrounding the app or
+   reloading the tab emptied it -- while the theme and the onboarding flag both
+   survived. Stored under the same mechanism the rest of the app already uses. */
+const CART_KEY = 'lajwab.cart.quantities';
+
+/* Only the code is stored, never the coupon object. A code withdrawn from
+   COUPONS between sessions then resolves to nothing and is dropped, instead of
+   a stale offer reappearing in a cart and being rejected at checkout. */
+const CART_COUPON_KEY = 'lajwab.cart.coupon';
 
 export const DELIVERY_FEE = 20;
 export const FREE_DELIVERY_THRESHOLD = 200;
@@ -26,9 +37,33 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { getProductById } = useCatalog();
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const { getProductById, products, isLoading } = useCatalog();
+  const [quantities, setQuantities, cartHydrated] = usePersistedState<Record<string, number>>(CART_KEY, {});
+  const [couponCode, setCouponCode] = usePersistedState<string | null>(CART_COUPON_KEY, null);
+
+  const appliedCoupon = useMemo(() => (couponCode ? findCoupon(couponCode) ?? null : null), [couponCode]);
+
+  /* A cart restored from storage describes yesterday's shelf. Once the real
+     catalogue has loaded, drop anything the bakery no longer sells or has sold
+     out of, and clamp anything now above what was baked -- otherwise the
+     customer reaches checkout and place_order refuses the whole order.
+     Runs on every catalogue change, so it also covers stock moving underneath a
+     cart that has been sitting open. */
+  useEffect(() => {
+    if (!cartHydrated || isLoading || products.length === 0) return;
+    setQuantities((prev) => {
+      let changed = false;
+      const next: Record<string, number> = {};
+      for (const [id, qty] of Object.entries(prev)) {
+        const product = products.find((p) => p.id === id);
+        if (!product || product.stock <= 0) { changed = true; continue; }
+        const capped = Math.min(qty, product.stock);
+        if (capped !== qty) changed = true;
+        next[id] = capped;
+      }
+      return changed ? next : prev;
+    });
+  }, [cartHydrated, isLoading, products, setQuantities]);
 
   const increment = (productId: string) => {
     const product = getProductById(productId);
@@ -55,7 +90,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     setQuantities({});
-    setAppliedCoupon(null);
+    setCouponCode(null);
   };
 
   const { totalItems, totalPrice } = useMemo(() => {
@@ -83,13 +118,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, message: `Add ₹${short} more to use this coupon` };
       }
 
-      setAppliedCoupon(coupon);
+      setCouponCode(coupon.code);
       return { ok: true, message: `${coupon.code} applied — ${coupon.discount}` };
     },
-    [totalPrice],
+    [totalPrice, setCouponCode],
   );
 
-  const removeCoupon = useCallback(() => setAppliedCoupon(null), []);
+  const removeCoupon = useCallback(() => setCouponCode(null), [setCouponCode]);
 
   // A coupon stays applied while the cart shrinks below its minimum, so re-check here
   const couponIsValid = appliedCoupon !== null && totalPrice >= appliedCoupon.minOrder;

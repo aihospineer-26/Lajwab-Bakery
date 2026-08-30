@@ -187,12 +187,19 @@ export async function updateProduct(id: string, patch: Partial<ProductInput>): P
   await writeProductOverlay(overlay);
 }
 
+/* Deleting is permanent and nothing stops it.
+ *
+ * This used to report "it may appear in past orders", claiming a foreign key
+ * that has never existed: order_items deliberately has no reference to
+ * products, so history survives on its own snapshot of the name and price and
+ * the delete always succeeds. Saying otherwise told the owner a mistaken
+ * delete had been refused when it had not.
+ *
+ * Prefer archiveProduct() below for taking something off the menu. */
 export async function deleteProduct(id: string): Promise<void> {
   if (await hasSession()) {
     const { error } = await supabase.from('products').delete().eq('id', id);
-    // A product referenced by past orders is protected by a foreign key —
-    // failing loudly here is correct; silently deleting would corrupt history.
-    if (error) throw new Error('Could not delete this product — it may appear in past orders.');
+    if (error) throw new Error('Could not delete this product: ' + error.message);
     return;
   }
 

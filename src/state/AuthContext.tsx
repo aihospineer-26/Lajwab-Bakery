@@ -102,35 +102,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    /* Every customer gets a session, they just never see a login screen.
-       Anonymous sign-in mints a real auth.uid(), so place_order and every RLS
-       policy keep working untouched -- the alternative was opening the orders
-       table to unauthenticated writes, which would have made every order
-       readable by anyone.
+    /* Restore the stored session if there is one, and otherwise browse signed
+       out -- the catalogue is world-readable and checkout asks for OTP.
 
-       It is deliberately not an identity. The phone number collected at
-       checkout is what coupons are counted against. When OTP arrives this same
-       account is upgraded in place, so nothing here is thrown away. */
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session) {
-        setSession(data.session);
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: anon, error } = await supabase.auth.signInAnonymously();
-      /* Not fatal: browsing works without a session, and checkout asks the
-         customer to sign in anyway. Anonymous sign-ins are currently disabled
-         on the project, so this is the expected path rather than a fault --
-         logged quietly, and only in development, so it does not look like a
-         failure in a production console. */
-      if (error && __DEV__) {
-        console.warn(
-          '[auth] anonymous sign-in unavailable (' + error.message + ') — ' +
-            'browsing continues without a session.',
-        );
-      }
-      setSession(anon?.session ?? null);
+       This used to fall through to signInAnonymously(). The anonymous provider
+       is switched off on the project and is staying off now that OTP is live,
+       so that call could only ever fail: it cost every cold start a doomed auth
+       round-trip and put a 422 in each customer's console. */
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session ?? null);
       setIsLoading(false);
     });
 

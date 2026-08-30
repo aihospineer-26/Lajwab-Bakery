@@ -24,6 +24,8 @@ type OrderRow = {
   coupon_code: string | null;
   discount: number | null;
   delivery_fee: number | null;
+  customer_name: string | null;
+  customer_phone: string | null;
 };
 
 type OrderItemRow = {
@@ -53,6 +55,10 @@ export type OrderDetails = {
      rather than accepting an undeliverable order. */
   customerName: string;
   customerPhone: string;
+  /* One id per checkout attempt, held across retries. place_order stores it
+     against the order, so a request whose response was lost returns the order
+     it already created instead of placing a second one. */
+  requestId: string;
   couponCode?: string;
   /* Both preview-mode only. Signed in, place_order recomputes the discount and
      the delivery fee itself and ignores whatever the client thinks they are. */
@@ -61,7 +67,20 @@ export type OrderDetails = {
 };
 
 const ORDER_COLUMNS =
-  'id, total, item_count, status, created_at, delivery_address, payment_method, delivery_slot, coupon_code, discount, delivery_fee';
+  'id, total, item_count, status, created_at, delivery_address, payment_method, delivery_slot, coupon_code, discount, delivery_fee, customer_name, customer_phone';
+
+/* A v4 uuid for the idempotency key. crypto.randomUUID exists on web and on
+   recent Hermes; the fallback keeps older Android runtimes working. Only ever
+   compared for equality against a value this device generated, so the weaker
+   randomness of the fallback costs nothing. */
+export function newRequestId(): string {
+  const c = (globalThis as { crypto?: Crypto }).crypto;
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
+    const r = (Math.random() * 16) | 0;
+    return (ch === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 
 function mapOrderRow(row: OrderRow): Order {
   return {
@@ -77,6 +96,8 @@ function mapOrderRow(row: OrderRow): Order {
     couponCode: row.coupon_code ?? undefined,
     discount: row.discount ?? undefined,
     deliveryFee: row.delivery_fee ?? undefined,
+    customerName: row.customer_name ?? undefined,
+    customerPhone: row.customer_phone ?? undefined,
   };
 }
 
@@ -177,6 +198,7 @@ export async function placeOrder(items: NewOrderItem[], details: OrderDetails): 
       customer_name: details.customerName,
       customer_phone: details.customerPhone,
       coupon_code: details.couponCode ?? null,
+      request_id: details.requestId,
     },
   });
   if (error) throw error;
@@ -308,6 +330,28 @@ export async function fetchAllOrders(): Promise<Order[]> {
   const { data, error } = await supabase
     .from('orders')
     .select(ORDER_COLUMNS)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  return (data as OrderRow[]).map(mapOrderRow);
+}
+
+/** Orders taken since midnight. Used to warn before a start-of-day stock reset
+ *  overwrites counts that today's sales have already moved. */
+export async function fetchOrdersToday(): Promise<Order[]> {
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    const existing = await readLocalOrders();
+    return existing.filter(o => (o.createdAt ?? '') >= midnight.toISOString());
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select(ORDER_COLUMNS)
+    .gte('created_at', midnight.toISOString())
     .order('created_at', { ascending: false });
   if (error) throw error;
 

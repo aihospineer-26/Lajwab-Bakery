@@ -24,6 +24,10 @@ export type Order = {
   couponCode?: string;
   discount?: number;
   deliveryFee?: number;
+  /* Who to hand the order to and what number to ring on the way. Optional
+     because rows stored before migration 004 lack them. */
+  customerName?: string;
+  customerPhone?: string;
 };
 
 export type PaymentMethod = 'cod' | 'upi' | 'card';

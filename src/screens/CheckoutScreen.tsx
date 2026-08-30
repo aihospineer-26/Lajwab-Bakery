@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Pressable,
@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { RootStackParamList } from '../navigation/types';
-import { placeOrder } from '../services/orders';
+import { newRequestId, placeOrder } from '../services/orders';
 import { DELIVERY_FEE, useCart } from '../state/CartContext';
 import { useCatalog } from '../state/CatalogContext';
 import { useLocation } from '../state/LocationContext';
@@ -94,6 +94,16 @@ export function CheckoutScreen({ navigation }: Props) {
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /* One id per checkout attempt, minted on the first tap and kept until an
+     order actually lands. A second tap, or a retry after the response was lost
+     on a patchy connection, therefore carries the id the server already has
+     and gets back the same order instead of placing another. Cleared on
+     success so the customer's next order is a genuinely new one.
+     The isPlacing flag below still hides most double taps -- but it is React
+     state, so two taps inside one render pass both pass it, and it cannot help
+     at all once the request has left the device. */
+  const requestIdRef = useRef<string | null>(null);
+
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
 
@@ -163,6 +173,7 @@ export function CheckoutScreen({ navigation }: Props) {
         price: p.price,
       }));
       const slot = slots.find(sl => sl.id === selectedSlot);
+      if (requestIdRef.current === null) requestIdRef.current = newRequestId();
       await placeOrder(items, {
         address: {
           label: address.label,
@@ -175,10 +186,12 @@ export function CheckoutScreen({ navigation }: Props) {
         deliverySlot: slot?.label ?? selectedSlot,
         customerName: customerName.trim(),
         customerPhone: digitsOnly(customerPhone),
+        requestId: requestIdRef.current,
         deliveryFee,
         couponCode: appliedCoupon?.code,
         discount,
       });
+      requestIdRef.current = null;
       await AsyncStorage.setItem(CONTACT_KEY, JSON.stringify({ name: customerName.trim() }));
       await refetchProducts();
       clearCart();
