@@ -70,9 +70,11 @@ const channel = env?.EXPO_PUBLIC_OTP_CHANNEL || 'whatsapp';
 const store = group('Bakery details');
 const storeSrc = fs.readFileSync(path.join(ROOT, 'src/data/store.ts'), 'utf8');
 
+/* fssai is deliberately not here any more: it lives in store_settings so the
+   bakery can enter it from the dashboard without a rebuild, and is checked
+   against the database further down. */
 const STORE_FIELDS = [
   ['phone', 'customers cannot call the bakery', true],
-  ['fssai', 'required by law on an Indian food app', true],
   ['whatsapp', 'the WhatsApp support button stays hidden', false],
 ];
 
@@ -208,6 +210,25 @@ if (url && key) {
        reach -- place_order itself refuses an unauthenticated caller before any
        validation, so it cannot be probed from here. The behaviour of the order
        path proper is covered by the end-to-end suite, which signs in. */
+    const legal = await get('/rest/v1/store_settings?select=fssai,gstin');
+    if (legal.ok) {
+      const rows = await legal.json().catch(() => []);
+      const licence = (rows?.[0]?.fssai ?? '').trim();
+      if (licence) {
+        db.ok('FSSAI licence is set (' + licence + ')');
+      } else {
+        db.fail(
+          'FSSAI licence number is not set -- required by law on an Indian food app',
+          'the bakery enters it in the dashboard: Account tab -> Licence & registration',
+        );
+      }
+    } else {
+      db.fail(
+        'store_settings is missing -- the bakery cannot enter their FSSAI licence',
+        'part of migration 005',
+      );
+    }
+
     const norm = await fetch(url + '/rest/v1/rpc/normalise_mobile', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
@@ -407,6 +428,78 @@ if (url && key) {
 
     } /* end: OTP channels */
   }
+}
+
+/* ------------------------------------------------------- android release */
+/* EAS Build uploads the project honouring .gitignore, and .env.local is
+   ignored -- so an APK built without a committed .env ships with no Supabase
+   URL and no MSG91 widget. It installs, opens to an empty catalogue and does
+   nothing on sign-in, which reads as a code fault and is not one. Reproduced
+   by building with both env files hidden: the bundle fell back to
+   placeholder.supabase.co. */
+
+const rel = group('Android release build');
+
+const envFile = path.join(ROOT, '.env');
+if (!fs.existsSync(envFile)) {
+  rel.fail(
+    '.env is missing -- an EAS build would ship with no backend configuration',
+    'copy the EXPO_PUBLIC_* values from .env.local into a committed .env',
+  );
+} else {
+  const committed = {};
+  const NEWLINE = String.fromCharCode(10);
+  for (const rawLine of fs.readFileSync(envFile, 'utf8').split(NEWLINE)) {
+    const line = rawLine.trim();
+    const eq = line.indexOf('=');
+    if (line.startsWith('#') || eq < 1) continue;
+    committed[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+  }
+  const needed = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY'];
+  if (channel === 'msg91') {
+    needed.push('EXPO_PUBLIC_MSG91_WIDGET_ID', 'EXPO_PUBLIC_MSG91_AUTH_TOKEN');
+  }
+  const absent = needed.filter((k) => !committed[k]);
+  if (absent.length === 0) {
+    rel.ok('.env carries the build-time config an APK needs');
+  } else {
+    rel.fail(
+      '.env is missing ' + absent.join(', ') + ' -- the APK would have no backend',
+      'add them to .env; they are EXPO_PUBLIC_* and already public in any build',
+    );
+  }
+
+  if (env) {
+    const drift = needed.filter((k) => env[k] && committed[k] && env[k] !== committed[k]);
+    if (drift.length) {
+      rel.fail(
+        '.env and .env.local disagree on ' + drift.join(', '),
+        'the APK would be built from different settings than you test locally',
+      );
+    }
+  }
+}
+
+const appJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8')).expo ?? {};
+if (appJson.android && appJson.android.package) {
+  rel.ok('android package id is set (' + appJson.android.package + ')');
+} else {
+  rel.fail('android.package is not set -- the build has no application id', 'set it in app.json');
+}
+if (appJson.version && appJson.android && appJson.android.versionCode) {
+  rel.ok('version ' + appJson.version + ' (versionCode ' + appJson.android.versionCode + ')');
+} else {
+  rel.warn('version or versionCode is unset', 'set both in app.json before the first upload');
+}
+if (appJson.android && (appJson.android.permissions || []).includes('INTERNET')) {
+  rel.ok('INTERNET permission is declared');
+} else {
+  rel.fail('INTERNET permission is missing -- the app cannot reach Supabase', 'add it to app.json');
+}
+if (appJson.scheme) {
+  rel.ok('deep-link scheme is set (' + appJson.scheme + '://)');
+} else {
+  rel.warn('no scheme set', 'needed if auth ever redirects back into the app');
 }
 
 /* ----------------------------------------------------------------- report */

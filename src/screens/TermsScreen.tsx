@@ -4,7 +4,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { SERVICE_AREA_LABEL } from '../data/serviceability';
-import { STORE, hasFssai } from '../data/store';
+import { STORE } from '../data/store';
+import { useStoreSettings } from '../services/storeSettings';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, spacing } from '../theme';
@@ -56,6 +57,7 @@ const SECTIONS = [
 
 export function TermsScreen({ navigation }: Props) {
   const { colors } = useTheme();
+  const settings = useStoreSettings();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
@@ -71,12 +73,13 @@ export function TermsScreen({ navigation }: Props) {
           </View>
         ))}
 
-        {/* Mandatory for a food business; hidden until the licence is filled in
-            so a blank line never ships. */}
-        {hasFssai ? (
+        {/* Mandatory for a food business in India. Read from the database so
+            the bakery can enter it themselves; hidden while empty, so a blank
+            line never ships and nothing can be mistaken for a real licence. */}
+        {settings.fssai ? (
           <Text style={styles.legal}>
-            {STORE.name} · FSSAI Lic. No. {STORE.fssai}
-            {STORE.gstin ? '  ·  GSTIN ' + STORE.gstin : ''}
+            {STORE.name} · FSSAI Lic. No. {settings.fssai}
+            {settings.gstin ? '  ·  GSTIN ' + settings.gstin : ''}
           </Text>
         ) : null}
       </ScrollView>

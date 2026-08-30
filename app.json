@@ -6,7 +6,6 @@
     "scheme": "lajwabbakery",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },

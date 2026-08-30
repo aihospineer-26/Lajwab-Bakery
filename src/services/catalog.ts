@@ -20,6 +20,7 @@ type ProductRow = {
   category_id: string;
   description: string;
   stock: number;
+  price_source: string | null;
 };
 
 type CategoryRow = {
@@ -28,7 +29,9 @@ type CategoryRow = {
   image: string;
 };
 
-export type ProductWithStock = Product & { stock: number };
+/* priceSource is null for anything the bakery has never confirmed. The
+   dashboard badges those so the owner can find them before launch. */
+export type ProductWithStock = Product & { stock: number; priceSource?: string | null };
 
 function mapProduct(row: ProductRow): ProductWithStock {
   return {
@@ -41,6 +44,7 @@ function mapProduct(row: ProductRow): ProductWithStock {
     categoryId: row.category_id,
     description: row.description,
     stock: row.stock,
+    priceSource: row.price_source,
   };
 }
 
@@ -58,7 +62,7 @@ export async function fetchProducts(): Promise<ProductWithStock[]> {
       ? Promise.resolve({ data: [] as ProductRow[], error: null })
       : supabase
           .from('products')
-          .select('id, name, unit, price, mrp, image, category_id, description, stock'),
+          .select('id, name, unit, price, mrp, image, category_id, description, stock, price_source'),
     fetchStockOverrides(),
     fetchProductOverlay(),
   ]);

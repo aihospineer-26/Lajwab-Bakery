@@ -11,19 +11,22 @@
  * changes. Swapping MSG91 out once DLT clears means deleting this function,
  * not migrating data.
  *
- * SECURITY NOTE -- read before relying on this in production: MSG91's
- * verifyAccessToken response is confirmed to report failure as
- * {message, type:'error', code}. Its SUCCESS shape is not confirmed from
- * their own docs at the time this was written -- third-party sources describe
- * an `identifier` field carrying the verified phone number, which is what
- * closes the obvious spoofing gap (a client verifying their own phone, then
- * claiming the token belongs to a different number). This function checks for
- * that field and cross-validates against the client-supplied phone whenever
- * it is present. If MSG91 ever returns success without it, the phone falls
- * back to whatever the client sent -- logged loudly so it is impossible to
- * miss on the first real test. Check the logs after that first sign-in; if
- * the warning appears, this trust boundary needs revisiting before relying on
- * it for anything beyond a single small bakery.
+ * SECURITY -- this function decides who someone is, so it fails closed.
+ *
+ * The phone number is taken only from MSG91's own verifyAccessToken response.
+ * The number the client sends is treated as a claim to be checked, never as a
+ * source of truth. An earlier version fell back to trusting that claim when
+ * MSG91 returned no identifier, which was an account-takeover vector: verify
+ * your own number, then post the token with somebody else's number attached and
+ * receive a session for their account. It also had no check on the HTTP status,
+ * so an MSG91 outage returning a non-JSON body parsed to {}, matched no error
+ * branch, and fell through to that same fallback -- turning a third-party
+ * outage into an authentication bypass.
+ *
+ * Both are closed. If MSG91 does not name the verified number, sign-in is
+ * refused and the raw response is logged. Should that ever fire, the fix is to
+ * add MSG91's actual field name to PHONE_FIELDS below -- never to trust the
+ * client again.
  *
  * The session is minted through generateLink + verifyOtp rather than by
  * signing a JWT by hand. A hand-signed token has no matching refresh token, so
@@ -42,39 +45,77 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const VERIFY_URL = 'https://control.msg91.com/api/v5/widget/verifyAccessToken';
 
-type Msg91VerifyResponse = {
-  type?: string;
-  success?: boolean;
-  message?: string;
-  code?: number;
-  identifier?: string;
-  mobile?: string;
-};
+type Msg91VerifyResponse = Record<string, unknown>;
 
-async function verifyMsg91Token(accessToken: string): Promise<string | null> {
-  const res = await fetch(VERIFY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ authkey: MSG91_AUTH_TOKEN, 'access-token': accessToken }),
-  });
+/* Every field MSG91 has been observed or documented to carry the verified
+   number in, checked at the top level and one level down. All of them come
+   from MSG91; none is client input. */
+const PHONE_FIELDS = ['identifier', 'mobile', 'phone', 'number', 'msisdn', 'contact'];
 
-  const body = (await res.json().catch(() => ({}))) as Msg91VerifyResponse;
+function extractPhone(body: Msg91VerifyResponse): string | null {
+  const containers: Record<string, unknown>[] = [body];
+  for (const nest of ['data', 'result', 'payload']) {
+    const inner = body[nest];
+    if (inner && typeof inner === 'object') containers.push(inner as Record<string, unknown>);
+  }
+  for (const container of containers) {
+    for (const field of PHONE_FIELDS) {
+      const value = container[field];
+      if (typeof value === 'string' && value.replace(/[^0-9]/g, '').length >= 10) return value;
+      if (typeof value === 'number' && String(value).length >= 10) return String(value);
+    }
+  }
+  return null;
+}
 
-  if (body.type === 'error' || body.success === false) {
-    throw new Error(body.message ?? 'MSG91 rejected the access token');
+/** The verified number, straight from MSG91. Throws rather than guessing. */
+async function verifyMsg91Token(accessToken: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(VERIFY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ authkey: MSG91_AUTH_TOKEN, 'access-token': accessToken }),
+    });
+  } catch (err) {
+    throw new Error('Could not reach MSG91: ' + (err as Error).message);
   }
 
-  const confirmedPhone = body.identifier ?? body.mobile ?? null;
+  const raw = await res.text();
+  let body: Msg91VerifyResponse = {};
+  try {
+    body = JSON.parse(raw) as Msg91VerifyResponse;
+  } catch {
+    /* A non-JSON body means MSG91 is unwell. It must never read as success. */
+    throw new Error('MSG91 returned a non-JSON response (HTTP ' + res.status + ')');
+  }
+
+  /* Checked before the payload is read at all: an HTTP failure is a failure
+     however the body happens to be shaped. */
+  if (!res.ok) {
+    throw new Error('MSG91 returned HTTP ' + res.status + ': ' + String(body.message ?? raw.slice(0, 120)));
+  }
+
+  if (body.type === 'error' || body.success === false) {
+    throw new Error(String(body.message ?? 'MSG91 rejected the access token'));
+  }
+
+  const confirmedPhone = extractPhone(body);
   if (!confirmedPhone) {
-    console.warn(
-      '[msg91-otp-bridge] verifyAccessToken succeeded but returned no identifier/mobile field. ' +
-        'Falling back to trusting the client-supplied phone -- see the security note at the top ' +
-        'of this file. Raw response:',
-      JSON.stringify(body),
+    /* Fail closed. Trusting the client's claim here would let anyone who can
+       verify one number mint a session for any other. */
+    console.error(
+      '[msg91-otp-bridge] verifyAccessToken succeeded but names no verified number. ' +
+        'Refusing the sign-in rather than trusting the client. Add the correct field to ' +
+        'PHONE_FIELDS and redeploy. Raw response:',
+      raw.slice(0, 500),
     );
+    throw new Error('MSG91 did not report which number was verified');
   }
   return confirmedPhone;
 }
+
+const lastTen = (value: string) => value.replace(/[^0-9]/g, '').slice(-10);
 
 /* auth.users requires an email for the magic-link exchange, but these accounts
    never receive mail -- the phone is the real identifier. The address is
@@ -111,7 +152,7 @@ Deno.serve(async (req) => {
   }
   if (!accessToken) return json({ error: 'Missing accessToken' }, 400);
 
-  let confirmedPhone: string | null;
+  let confirmedPhone: string;
   try {
     confirmedPhone = await verifyMsg91Token(accessToken);
   } catch (err) {
@@ -119,13 +160,24 @@ Deno.serve(async (req) => {
     return json({ error: 'Could not verify that sign-in' }, 401);
   }
 
-  /* Prefer what MSG91 itself confirmed. Only reach for the client's claim when
-     MSG91 did not report an identifier at all -- see the security note above. */
-  const phoneDigits = (confirmedPhone ?? claimedPhone ?? '').replace(/[^0-9]/g, '');
-  if (phoneDigits.length < 10) {
+  const phone = lastTen(confirmedPhone);
+  if (phone.length < 10) {
+    console.error('MSG91 reported an unusable number:', confirmedPhone);
     return json({ error: 'Could not determine the verified phone number' }, 400);
   }
-  const phone = phoneDigits.slice(-10);
+
+  /* The client's number is a claim, and the only thing it is used for is
+     catching a mismatch. A token verified for one number arriving alongside a
+     different one is somebody trying the takeover this function is built to
+     refuse, so it is logged as such rather than quietly ignored. */
+  if (claimedPhone && lastTen(claimedPhone) !== phone) {
+    console.error(
+      '[msg91-otp-bridge] REFUSED: token verified for a different number than the one claimed. ' +
+        'claimed ...' + lastTen(claimedPhone).slice(-4) + ', verified ...' + phone.slice(-4),
+    );
+    return json({ error: 'Could not verify that sign-in' }, 401);
+  }
+
   const email = syntheticEmail(phone);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {

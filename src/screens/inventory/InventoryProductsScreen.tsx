@@ -165,6 +165,15 @@ export function InventoryProductsScreen() {
           </Text>
           <View style={styles.rowPriceLine}>
             <Text style={styles.rowPrice}>₹{item.price}</Text>
+            {/* Most of these prices were estimated when the app was built and
+                have never been checked against the counter. Badging the ones
+                nobody has confirmed is the only way the owner can find them. */}
+            {item.priceSource ? null : (
+              <View style={styles.unverifiedPill}>
+                <Feather name="alert-circle" size={10} color={colors.danger} />
+                <Text style={styles.unverifiedText}>Check price</Text>
+              </View>
+            )}
             {item.mrp !== undefined && <Text style={styles.rowMrp}>₹{item.mrp}</Text>}
             <View style={[styles.pill, styles[`pill_${state}`]]}>
               <Text style={[styles.pillText, styles[`pillText_${state}`]]}>
@@ -561,6 +570,17 @@ function createStyles(colors: ColorPalette) {
     rowMeta: { fontSize: 12, color: colors.textMuted },
     rowPriceLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 },
     rowPrice: { fontSize: 14, fontWeight: '800', color: colors.text },
+    unverifiedPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: colors.danger,
+    },
+    unverifiedText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.4, color: colors.danger },
     rowMrp: { fontSize: 12, color: colors.textMuted, textDecorationLine: 'line-through' },
 
     pill: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full },

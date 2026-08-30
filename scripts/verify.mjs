@@ -100,7 +100,10 @@ check('one day ahead reads as Tomorrow', dayLabel(1), 'Tomorrow');
 
 const warnings = [];
 if (!hasPhone) warnings.push('STORE.phone is empty - customers cannot contact the bakery');
-if (!hasFssai) warnings.push('STORE.fssai is empty - required for a food business in India');
+/* The licence now lives in store_settings so the bakery can enter it without a
+   rebuild. verify.mjs is offline-only, so preflight is what checks the real
+   value; this just makes sure the fallback constant has not been half-filled. */
+if (hasFssai) warnings.push('STORE.fssai is set in source - the dashboard value overrides it; clear it unless you meant to bake one in');
 if (STORE.pincode !== '110058') warnings.push('STORE.pincode is not 110058');
 
 /* ---------- report ---------- */

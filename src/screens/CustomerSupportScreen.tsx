@@ -3,7 +3,8 @@ import React, { useMemo } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
-import { STORE, hasEmail, hasFssai, hasPhone, hasWhatsapp } from '../data/store';
+import { STORE, hasEmail, hasPhone, hasWhatsapp } from '../data/store';
+import { useStoreSettings } from '../services/storeSettings';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
@@ -69,6 +70,7 @@ const faqs = [
 export function CustomerSupportScreen({ navigation }: Props) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const settings = useStoreSettings();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -122,12 +124,13 @@ export function CustomerSupportScreen({ navigation }: Props) {
           </Text>
         </View>
 
-        {/* Mandatory for a food business in India. Hidden until the licence
-            number is filled in, so a blank line never ships. */}
-        {hasFssai ? (
+        {/* Mandatory for a food business in India. Read from the database so
+            the bakery can enter it themselves; hidden while empty, so a blank
+            line never ships and nothing can be mistaken for a real licence. */}
+        {settings.fssai ? (
           <Text style={styles.legal}>
-            {STORE.name} · FSSAI Lic. No. {STORE.fssai}
-            {STORE.gstin ? '  ·  GSTIN ' + STORE.gstin : ''}
+            {STORE.name} · FSSAI Lic. No. {settings.fssai}
+            {settings.gstin ? '  ·  GSTIN ' + settings.gstin : ''}
           </Text>
         ) : null}
       </ScrollView>
