@@ -12,6 +12,7 @@ import { useAuth } from '../state/AuthContext';
 import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Account'>,
@@ -200,16 +201,17 @@ function createStyles(colors: ColorPalette) {
     avatarInitial: {
       fontSize: 28,
       fontWeight: '800',
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
     },
     headerName: {
-      fontSize: 20,
-      fontWeight: '800',
-      color: '#FFFFFF',
+      fontFamily: SERIF_BOLD,
+      fontSize: 21,
+      color: colors.textOnPrimary,
     },
     headerEmail: {
       fontSize: 13,
-      color: 'rgba(255,255,255,0.72)',
+      color: colors.textOnPrimary,
+      opacity: 0.72,
       marginTop: 2,
     },
     editBtn: {

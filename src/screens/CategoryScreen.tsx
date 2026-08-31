@@ -8,6 +8,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useCatalog } from '../state/CatalogContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 import { useGridColumns } from '../theme/responsive';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Category'>;
@@ -201,7 +202,7 @@ function createStyles(colors: ColorPalette) {
     },
     backIcon: {
       fontSize: 18,
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontWeight: '700',
     },
     headerCenter: {
@@ -215,9 +216,9 @@ function createStyles(colors: ColorPalette) {
       fontSize: 18,
     },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: '#FFFFFF',
+      fontFamily: SERIF_BOLD,
+      fontSize: 19,
+      color: colors.textOnPrimary,
     },
     headerRight: {
       width: 52,
@@ -226,7 +227,8 @@ function createStyles(colors: ColorPalette) {
     headerCount: {
       fontSize: 11,
       fontWeight: '600',
-      color: 'rgba(255,255,255,0.65)',
+      color: colors.textOnPrimary,
+      opacity: 0.65,
     },
     /* ── Sort chips ── */
     sortWrap: {
@@ -258,7 +260,7 @@ function createStyles(colors: ColorPalette) {
       color: colors.textMuted,
     },
     sortChipTextActive: {
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
     },
     /* ── Grid ── */
     listContent: {

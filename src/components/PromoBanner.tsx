@@ -4,7 +4,7 @@ import { Animated, ScrollView, StyleSheet, Text, useWindowDimensions, View } fro
 import { banners } from '../data/banners';
 import { festivals } from '../data/festivals';
 import { useTheme } from '../state/ThemeContext';
-import { radius, spacing } from '../theme';
+import { ColorPalette, radius, spacing } from '../theme';
 import { FestiveOfferBanner } from './FestiveOfferBanner';
 
 const FESTIVAL_WINDOW_DAYS = 21;
@@ -21,8 +21,8 @@ function getUpcomingFestival() {
 
 export function PromoBanner() {
   const { width } = useWindowDimensions();
-  const { typography } = useTheme();
-  const styles = useMemo(() => createStyles(), []);
+  const { typography, colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const cardWidth = Math.min(300, width - spacing.lg * 2 - 40);
   const upcomingFestival = useMemo(() => getUpcomingFestival(), []);
 
@@ -118,7 +118,7 @@ export function PromoBanner() {
   );
 }
 
-function createStyles() {
+function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
     row: {
       gap: spacing.md,
@@ -161,7 +161,7 @@ function createStyles() {
       backgroundColor: 'rgba(0,0,0,0.18)',
     },
     dotActive: {
-      backgroundColor: '#B4553C',
+      backgroundColor: colors.primary,
       width: 16,
       borderRadius: 3,
     },

@@ -17,6 +17,7 @@ import { STORE } from '../data/store';
 import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompleteProfile'> & {
   onDone?: () => void;
@@ -138,8 +139,8 @@ function createStyles(colors: ColorPalette) {
     },
     logoEmoji: { fontSize: 24 },
     title: {
-      fontSize: 24,
-      fontWeight: '800',
+      fontFamily: SERIF_BOLD,
+      fontSize: 26,
       color: colors.text,
       textAlign: 'center',
     },

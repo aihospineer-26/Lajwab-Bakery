@@ -406,7 +406,7 @@ function createStyles(colors: ColorPalette) {
       color: colors.textMuted,
     },
     chipTextActive: {
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
     },
 
     /* ── Active filter bar ── */
@@ -435,7 +435,7 @@ function createStyles(colors: ColorPalette) {
     clearFilterText: {
       fontSize: 11,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
     },
 
     /* ── Browse ── */

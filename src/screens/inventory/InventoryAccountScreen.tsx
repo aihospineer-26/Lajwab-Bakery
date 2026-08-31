@@ -132,7 +132,7 @@ export function InventoryAccountScreen() {
               disabled={legalState === 'loading' || legalState === 'saving'}
             >
               {legalState === 'saving' ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={colors.textOnPrimary} />
               ) : (
                 <Text style={styles.legalSaveText}>
                   {legalState === 'saved' ? 'Saved' : 'Save'}
@@ -269,7 +269,7 @@ function createStyles(colors: ColorPalette) {
       alignItems: 'center',
     },
     legalSaveBusy: { opacity: 0.7 },
-    legalSaveText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
+    legalSaveText: { color: colors.textOnPrimary, fontWeight: '800', fontSize: 14 },
     statsRow: { flexDirection: 'row', gap: spacing.sm },
 
     noticeCard: {

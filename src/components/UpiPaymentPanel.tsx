@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import React, { useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { Animated, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { paymentNote, upiIntentUrl } from '../data/orders';
 import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 
 type Props = {
   orderId: string;
@@ -25,6 +26,7 @@ export function UpiPaymentPanel({ orderId, amount, vpa }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [copied, setCopied] = useState<'vpa' | 'note' | null>(null);
+  const checkScale = useRef(new Animated.Value(1)).current;
 
   const note = paymentNote(orderId);
 
@@ -32,6 +34,8 @@ export function UpiPaymentPanel({ orderId, amount, vpa }: Props) {
     try {
       await Clipboard.setStringAsync(value);
       setCopied(which);
+      checkScale.setValue(0.6);
+      Animated.spring(checkScale, { toValue: 1, useNativeDriver: true, speed: 24, bounciness: 14 }).start();
       setTimeout(() => setCopied(null), 2000);
     } catch {
       /* Nothing useful to say -- the value is on screen and selectable either
@@ -61,7 +65,9 @@ export function UpiPaymentPanel({ orderId, amount, vpa }: Props) {
       <Pressable style={styles.valueRow} onPress={() => copy(vpa, 'vpa')} accessibilityRole="button" accessibilityLabel={'Copy UPI ID ' + vpa}>
         <Text style={styles.vpa} selectable>{vpa}</Text>
         <View style={styles.copyBtn}>
-          <Ionicons name={copied === 'vpa' ? 'checkmark' : 'copy-outline'} size={14} color={colors.primary} />
+          <Animated.View style={{ transform: [{ scale: copied === 'vpa' ? checkScale : 1 }] }}>
+            <Ionicons name={copied === 'vpa' ? 'checkmark' : 'copy-outline'} size={14} color={colors.primary} />
+          </Animated.View>
           <Text style={styles.copyText}>{copied === 'vpa' ? 'Copied' : 'Copy'}</Text>
         </View>
       </Pressable>
@@ -70,7 +76,9 @@ export function UpiPaymentPanel({ orderId, amount, vpa }: Props) {
       <Pressable style={styles.valueRow} onPress={() => copy(note, 'note')} accessibilityRole="button" accessibilityLabel={'Copy payment note ' + note}>
         <Text style={styles.note} selectable>{note}</Text>
         <View style={styles.copyBtn}>
-          <Ionicons name={copied === 'note' ? 'checkmark' : 'copy-outline'} size={14} color={colors.primary} />
+          <Animated.View style={{ transform: [{ scale: copied === 'note' ? checkScale : 1 }] }}>
+            <Ionicons name={copied === 'note' ? 'checkmark' : 'copy-outline'} size={14} color={colors.primary} />
+          </Animated.View>
           <Text style={styles.copyText}>{copied === 'note' ? 'Copied' : 'Copy'}</Text>
         </View>
       </Pressable>
@@ -108,7 +116,7 @@ function createStyles(colors: ColorPalette) {
       gap: spacing.xs,
     },
     header: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    title: { fontSize: 15.5, fontWeight: '800', color: colors.text },
+    title: { fontFamily: SERIF_BOLD, fontSize: 17, color: colors.text },
     intro: {
       fontSize: 13,
       lineHeight: 19,
@@ -132,7 +140,7 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.md,
     },
-    vpa: { flex: 1, fontSize: 18, fontWeight: '800', color: colors.text },
+    vpa: { flex: 1, fontFamily: SERIF_BOLD, fontSize: 18, letterSpacing: 0.2, color: colors.text },
     note: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.text },
     copyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     copyText: { fontSize: 12, fontWeight: '700', color: colors.primary },
@@ -144,7 +152,7 @@ function createStyles(colors: ColorPalette) {
       alignItems: 'center',
       marginTop: spacing.md,
     },
-    openBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+    openBtnText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '800' },
     waiting: {
       flexDirection: 'row',
       gap: spacing.xs,

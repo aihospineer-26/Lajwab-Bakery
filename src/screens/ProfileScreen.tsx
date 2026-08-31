@@ -21,6 +21,7 @@ import { useAuth } from '../state/AuthContext';
 import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -257,11 +258,11 @@ function createStyles(colors: ColorPalette) {
     avatarText: {
       fontSize: 32,
       fontWeight: '800',
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
     },
     avatarName: {
-      fontSize: 20,
-      fontWeight: '800',
+      fontFamily: SERIF_BOLD,
+      fontSize: 21,
       color: colors.text,
     },
     avatarEmail: {

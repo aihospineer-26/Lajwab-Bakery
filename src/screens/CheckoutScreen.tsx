@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,10 +28,35 @@ import { useAuth } from '../state/AuthContext';
 import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checkout'>;
 
 const CONTACT_KEY = 'lajwab.checkout.contact';
+
+/* A tiny tactile compress on tap, shared by the slot and payment rows so
+   picking an option feels like touching something rather than flipping a
+   database value. */
+function SelectRow({
+  onPress,
+  style,
+  children,
+}: {
+  onPress: () => void;
+  style: any;
+  children: React.ReactNode;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.98, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 6 }).start();
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable style={style} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+        {children}
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 function buildSlots(leadDays: number) {
   const day = dayLabel(leadDays);
@@ -126,6 +152,9 @@ export function CheckoutScreen({ navigation }: Props) {
      state, so two taps inside one render pass both pass it, and it cannot help
      at all once the request has left the device. */
   const requestIdRef = useRef<string | null>(null);
+  const placeBtnScale = useRef(new Animated.Value(1)).current;
+  const onPlacePressIn = () => Animated.spring(placeBtnScale, { toValue: 0.96, useNativeDriver: true, speed: 35, bounciness: 4 }).start();
+  const onPlacePressOut = () => Animated.spring(placeBtnScale, { toValue: 1, useNativeDriver: true, speed: 22, bounciness: 10 }).start();
 
   const { profile, updateProfile } = useUserProfile();
   const [customerName, setCustomerName] = useState('');
@@ -321,7 +350,7 @@ export function CheckoutScreen({ navigation }: Props) {
             {slots.map(slot => {
               const active = selectedSlot === slot.id;
               return (
-                <Pressable
+                <SelectRow
                   key={slot.id}
                   style={[styles.slotRow, active && styles.slotRowActive]}
                   onPress={() => setSelectedSlot(slot.id)}
@@ -334,7 +363,7 @@ export function CheckoutScreen({ navigation }: Props) {
                   <View style={[styles.radio, active && styles.radioActive]}>
                     {active && <View style={styles.radioDot} />}
                   </View>
-                </Pressable>
+                </SelectRow>
               );
             })}
           </View>
@@ -348,15 +377,14 @@ export function CheckoutScreen({ navigation }: Props) {
               const active = selectedPayment === method.id;
               const disabled = method.comingSoon === true;
               return (
-                <Pressable
+                <SelectRow
                   key={method.id}
-                  disabled={disabled}
                   style={[
                     styles.slotRow,
                     active && styles.slotRowActive,
                     disabled && styles.slotRowDisabled,
                   ]}
-                  onPress={() => setSelectedPayment(method.id)}
+                  onPress={() => !disabled && setSelectedPayment(method.id)}
                 >
                   <Text style={styles.slotIcon}>{method.icon}</Text>
                   <View style={styles.slotInfo}>
@@ -370,7 +398,7 @@ export function CheckoutScreen({ navigation }: Props) {
                       {active && <View style={styles.radioDot} />}
                     </View>
                   )}
-                </Pressable>
+                </SelectRow>
               );
             })}
           </View>
@@ -438,13 +466,17 @@ export function CheckoutScreen({ navigation }: Props) {
             <Text style={styles.footerTotal}>₹{grandTotal}</Text>
             <Text style={styles.footerSub}>incl. all taxes</Text>
           </View>
-          <Pressable
-            style={[styles.placeBtn, (isPlacing || totalItems === 0) && styles.placeBtnDisabled]}
-            onPress={handlePlaceOrder}
-            disabled={isPlacing || totalItems === 0}
-          >
-            <Text style={styles.placeBtnText}>{isPlacing ? 'Placing...' : 'Place Order'}</Text>
-          </Pressable>
+          <Animated.View style={{ transform: [{ scale: placeBtnScale }] }}>
+            <Pressable
+              style={[styles.placeBtn, (isPlacing || totalItems === 0) && styles.placeBtnDisabled]}
+              onPress={handlePlaceOrder}
+              onPressIn={onPlacePressIn}
+              onPressOut={onPlacePressOut}
+              disabled={isPlacing || totalItems === 0}
+            >
+              <Text style={styles.placeBtnText}>{isPlacing ? 'Placing...' : 'Place Order'}</Text>
+            </Pressable>
+          </Animated.View>
         </View>
       </View>
     </SafeAreaView>
@@ -457,7 +489,7 @@ function createStyles(colors: ColorPalette) {
     content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
 
     section: { gap: spacing.sm },
-    sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.5, textTransform: 'uppercase' },
+    sectionTitle: { fontSize: 11, fontWeight: '600', color: colors.textMuted, letterSpacing: 1.4, textTransform: 'uppercase' },
 
     card: {
       backgroundColor: colors.surface,
@@ -503,7 +535,7 @@ function createStyles(colors: ColorPalette) {
        fact rather than an empty box inviting a correction. */
     phoneVerified: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.text },
     fieldHint: { fontSize: 12, color: colors.textMuted, marginTop: spacing.xs },
-    addressLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
+    addressLabel: { fontFamily: SERIF_BOLD, fontSize: 15.5, color: colors.text },
     addressLine: { fontSize: 13, color: colors.textMuted },
     changeLink: { fontSize: 13, fontWeight: '700', color: colors.primary },
 
@@ -601,15 +633,15 @@ function createStyles(colors: ColorPalette) {
     summaryItemPrice: { fontSize: 13, fontWeight: '600', color: colors.text },
     summaryDivider: { height: 1, backgroundColor: colors.border },
     summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    summaryRowLabel: { fontSize: 14, color: colors.textMuted },
-    summaryRowValue: { fontSize: 14, color: colors.text, fontWeight: '600' },
+    summaryRowLabel: { fontSize: 13, color: colors.textMuted },
+    summaryRowValue: { fontSize: 13, color: colors.textMuted, fontWeight: '500' },
     freeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    freeStrike: { fontSize: 13, color: colors.textMuted, textDecorationLine: 'line-through' },
+    freeStrike: { fontSize: 12, color: colors.textMuted, textDecorationLine: 'line-through' },
     freeLabel: { fontSize: 12, fontWeight: '700', color: colors.primary },
-    discountLabel: { fontSize: 14, color: colors.primary, fontWeight: '600' },
-    discountValue: { fontSize: 14, color: colors.primary, fontWeight: '700' },
-    totalLabel: { fontSize: 16, fontWeight: '800', color: colors.text },
-    totalValue: { fontSize: 16, fontWeight: '900', color: colors.primaryDark },
+    discountLabel: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+    discountValue: { fontSize: 13, color: colors.primary, fontWeight: '700' },
+    totalLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
+    totalValue: { fontFamily: SERIF_BOLD, fontSize: 21, color: colors.primaryDark },
 
     footer: {
       paddingHorizontal: spacing.lg,
@@ -621,7 +653,7 @@ function createStyles(colors: ColorPalette) {
     },
     errorText: { fontSize: 13, color: colors.danger, textAlign: 'center' },
     footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    footerTotal: { fontSize: 20, fontWeight: '900', color: colors.text },
+    footerTotal: { fontFamily: SERIF_BOLD, fontSize: 23, color: colors.text },
     footerSub: { fontSize: 11, color: colors.textMuted },
     placeBtn: {
       backgroundColor: colors.primary,
@@ -635,6 +667,6 @@ function createStyles(colors: ColorPalette) {
       elevation: 4,
     },
     placeBtnDisabled: { opacity: 0.6 },
-    placeBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+    placeBtnText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '800' },
   });
 }

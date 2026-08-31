@@ -42,13 +42,13 @@ export function CartLineItem({ product }: { product: ProductWithStock }) {
         )}
       </View>
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={2}>
+        <Text style={[typography.subheading, styles.name]} numberOfLines={2}>
           {product.name}
         </Text>
-        <Text style={styles.unit}>{product.unit}</Text>
+        <Text style={[typography.caption, styles.unit]}>{product.unit}</Text>
         <View style={styles.priceRow}>
           <Text style={styles.unitPrice}>₹{product.price} × {quantity}</Text>
-          <Text style={styles.totalPrice}>₹{product.price * quantity}</Text>
+          <Text style={[typography.price, styles.totalPrice]}>₹{product.price * quantity}</Text>
         </View>
       </View>
       <View style={styles.stepper}>
@@ -100,14 +100,11 @@ function createStyles(colors: ColorPalette) {
       gap: 2,
     },
     name: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.text,
-      lineHeight: 18,
+      fontSize: 14.5,
+      lineHeight: 19,
     },
     unit: {
-      fontSize: 12,
-      color: colors.textMuted,
+      marginTop: 1,
     },
     priceRow: {
       flexDirection: 'row',
@@ -120,9 +117,7 @@ function createStyles(colors: ColorPalette) {
       color: colors.textMuted,
     },
     totalPrice: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.text,
+      fontSize: 16,
     },
     stepper: {
       flexDirection: 'row',

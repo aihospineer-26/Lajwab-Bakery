@@ -12,6 +12,7 @@ import { dayLabel, leadTimeForProduct, leadTimeLabel } from '../data/preOrder';
 import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetail'>;
 
@@ -82,7 +83,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         style={[styles.header, { opacity: headerOpacity, transform: [{ translateY: headerY }] }]}
       >
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={10}>
-          <Ionicons name="arrow-back" size={21} color={colors.text} />
+          <Ionicons name="arrow-back" size={21} color={colors.textOnPrimary} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{product.name}</Text>
         <View style={{ width: 36 }} />
@@ -234,13 +235,13 @@ function createStyles(colors: ColorPalette) {
     },
     backIcon: {
       fontSize: 18,
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontWeight: '700',
     },
     headerTitle: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: '#FFFFFF',
+      fontFamily: SERIF_BOLD,
+      fontSize: 16,
+      color: colors.textOnPrimary,
       flex: 1,
       textAlign: 'center',
       marginHorizontal: spacing.sm,
@@ -251,7 +252,9 @@ function createStyles(colors: ColorPalette) {
       paddingBottom: spacing.xl,
     },
     imageWrap: {
-      backgroundColor: '#F2F8F3',
+      /* Warm tint, matching the product cards' image containers rather than a
+         cold, off-brand mint. */
+      backgroundColor: colors.accentLight,
       height: 280,
       alignItems: 'center',
       justifyContent: 'center',
@@ -265,13 +268,13 @@ function createStyles(colors: ColorPalette) {
       position: 'absolute',
       top: spacing.md,
       right: spacing.md,
-      backgroundColor: '#E53935',
+      backgroundColor: colors.danger,
       borderRadius: radius.sm,
       paddingVertical: 4,
       paddingHorizontal: spacing.sm,
     },
     discountText: {
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontWeight: '800',
       fontSize: 12,
     },
@@ -431,7 +434,7 @@ function createStyles(colors: ColorPalette) {
       opacity: 0.5,
     },
     reviewSubmitText: {
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontSize: 13,
       fontWeight: '700',
     },
@@ -516,7 +519,7 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: spacing.lg,
     },
     stepperBtnText: {
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontWeight: '700',
       fontSize: 20,
     },
@@ -525,13 +528,14 @@ function createStyles(colors: ColorPalette) {
       alignItems: 'center',
     },
     stepperQty: {
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontWeight: '800',
       fontSize: 18,
       lineHeight: 20,
     },
     stepperLabel: {
-      color: 'rgba(255,255,255,0.75)',
+      color: colors.textOnPrimary,
+      opacity: 0.75,
       fontSize: 10,
       fontWeight: '500',
     },

@@ -16,21 +16,28 @@ import { RootStackParamList } from '../navigation/types';
 import { fetchOrders } from '../services/orders';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Orders'>;
 
-const STATUS_CONFIG: Record<OrderStatus, { bg: string; text: string; icon: string }> = {
-  placed: { bg: '#F4E8E0', text: '#B4553C', icon: '⏳' },
-  accepted: { bg: '#F4E8E0', text: '#B4553C', icon: '👍' },
-  packed: { bg: '#F3E8FF', text: '#7C3AED', icon: '📦' },
-  out_for_delivery: { bg: '#FEF3C7', text: '#D97706', icon: '🛵' },
-  delivered: { bg: '#E0F7EB', text: '#0D7A3E', icon: '✅' },
-  cancelled: { bg: '#F7E4E1', text: '#B03A2E', icon: '✕' },
-};
+/* Drawn from the palette rather than a separate status-colour set, so this
+   list reads as the same brand as the tracker it links to -- not a
+   dashboard-style rainbow of hues the rest of the app never uses. */
+function statusConfig(colors: ColorPalette): Record<OrderStatus, { bg: string; text: string; icon: string }> {
+  return {
+    placed: { bg: colors.primaryLight, text: colors.primary, icon: '⏳' },
+    accepted: { bg: colors.primaryLight, text: colors.primary, icon: '👍' },
+    packed: { bg: colors.accentLight, text: colors.accent, icon: '📦' },
+    out_for_delivery: { bg: colors.primaryLight, text: colors.primaryDark, icon: '🛵' },
+    delivered: { bg: colors.surfaceMuted, text: colors.success, icon: '✅' },
+    cancelled: { bg: colors.surfaceMuted, text: colors.danger, icon: '✕' },
+  };
+}
 
 export function OrdersScreen({ navigation }: Props) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const STATUS_CONFIG = useMemo(() => statusConfig(colors), [colors]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -177,7 +184,7 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.xl,
     },
-    emptyBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+    emptyBtnText: { color: colors.textOnPrimary, fontWeight: '700', fontSize: 14 },
     content: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
@@ -209,8 +216,8 @@ function createStyles(colors: ColorPalette) {
       gap: 2,
     },
     orderId: {
-      fontSize: 15,
-      fontWeight: '800',
+      fontFamily: SERIF_BOLD,
+      fontSize: 16,
       color: colors.text,
     },
     orderDate: {
@@ -262,8 +269,8 @@ function createStyles(colors: ColorPalette) {
       color: colors.textMuted,
     },
     total: {
-      fontSize: 16,
-      fontWeight: '800',
+      fontFamily: SERIF_BOLD,
+      fontSize: 17,
       color: colors.text,
     },
     viewLink: {

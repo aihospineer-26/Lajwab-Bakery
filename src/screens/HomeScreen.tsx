@@ -265,7 +265,7 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.xl,
     },
-    retryText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+    retryText: { color: colors.textOnPrimary, fontWeight: '700', fontSize: 14 },
     skeletonGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -417,7 +417,7 @@ function createStyles(colors: ColorPalette) {
       color: colors.textMuted,
     },
     catChipTextActive: {
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
     },
     /* ── Product grid ── */
     productRow: {

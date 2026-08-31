@@ -28,6 +28,7 @@ import { fetchOrderById } from '../services/orders';
 import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrderConfirmation'>;
 
@@ -51,6 +52,8 @@ export function OrderConfirmationScreen({ navigation, route }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const celebScale = useRef(new Animated.Value(0.9)).current;
+  const celebOpacity = useRef(new Animated.Value(0)).current;
 
   /* Held beside the state so a dropped poll can tell "never loaded" from
      "loaded, and this one tick failed". A network blip must leave the last
@@ -116,6 +119,16 @@ export function OrderConfirmationScreen({ navigation, route }: Props) {
     loop.start();
     return () => loop.stop();
   }, [currentStep, isDelivered, isCancelled, order, pulseAnim]);
+
+  /* A small, one-shot arrival moment -- reacts to the real status, never
+     causes it. Runs once when the row actually says delivered. */
+  useEffect(() => {
+    if (!isDelivered) return;
+    Animated.parallel([
+      Animated.spring(celebScale, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 160, mass: 0.7 }),
+      Animated.timing(celebOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, [isDelivered, celebScale, celebOpacity]);
 
   const goHome = () => navigation.navigate('MainTabs', { screen: 'Home' });
 
@@ -192,7 +205,7 @@ export function OrderConfirmationScreen({ navigation, route }: Props) {
 
           {isCancelled ? (
             <View style={styles.cancelledBanner}>
-              <Ionicons name="close-circle-outline" size={30} color={colors.danger} />
+              <Ionicons name="close-circle-outline" size={26} color={colors.danger} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.cancelledTitle}>Order Cancelled</Text>
                 <Text style={styles.cancelledSub}>This order will not be delivered.</Text>
@@ -318,11 +331,16 @@ export function OrderConfirmationScreen({ navigation, route }: Props) {
           ) : null}
 
           {isCancelled ? null : isDelivered ? (
-            <View style={styles.celebCard}>
+            <Animated.View
+              style={[
+                styles.celebCard,
+                { opacity: celebOpacity, transform: [{ scale: celebScale }] },
+              ]}
+            >
               <Text style={styles.celebEmoji}>🎉</Text>
               <Text style={styles.celebTitle}>Delivered!</Text>
               <Text style={styles.celebSub}>Hope you enjoy everything, fresh from our oven.</Text>
-            </View>
+            </Animated.View>
           ) : (
             <View style={styles.etaCard}>
               <Text style={styles.etaIcon}>⚡</Text>
@@ -376,13 +394,13 @@ function createStyles(colors: ColorPalette) {
     },
     backIcon: {
       fontSize: 18,
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontWeight: '700',
     },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: '#FFFFFF',
+      fontFamily: SERIF_BOLD,
+      fontSize: 19,
+      color: colors.textOnPrimary,
     },
     /* ── Loading / error ── */
     centered: {
@@ -411,17 +429,19 @@ function createStyles(colors: ColorPalette) {
       paddingBottom: spacing.xxl,
       gap: spacing.md,
     },
-    /* ── Cancelled ── */
+    /* ── Cancelled — calm, not alarm-red. The order simply left the sequence. ── */
     cancelledBanner: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
-      backgroundColor: '#FEE2E2',
+      backgroundColor: colors.surfaceMuted,
       borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
       padding: spacing.md,
     },
-    cancelledTitle: { fontSize: 15, fontWeight: '800', color: '#991B1B' },
-    cancelledSub: { fontSize: 12, color: '#B91C1C', marginTop: 1 },
+    cancelledTitle: { fontFamily: SERIF_BOLD, fontSize: 16, color: colors.text },
+    cancelledSub: { fontSize: 12.5, color: colors.textMuted, marginTop: 1 },
     /* ── On-the-way card ── */
     riderCard: {
       backgroundColor: colors.surface,
@@ -449,11 +469,11 @@ function createStyles(colors: ColorPalette) {
     riderInitial: {
       fontSize: 18,
       fontWeight: '800',
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
     },
     riderName: {
+      fontFamily: SERIF_BOLD,
       fontSize: 15,
-      fontWeight: '700',
       color: colors.text,
     },
     riderVehicle: {
@@ -483,20 +503,22 @@ function createStyles(colors: ColorPalette) {
     },
     orderLabel: {
       fontSize: 11,
-      fontWeight: '700',
-      letterSpacing: 1,
+      fontWeight: '600',
+      letterSpacing: 1.4,
+      textTransform: 'uppercase',
       color: colors.textMuted,
-      marginBottom: 2,
+      marginBottom: 3,
     },
     orderId: {
-      fontSize: 20,
-      fontWeight: '900',
+      fontFamily: SERIF_BOLD,
+      fontSize: 24,
+      letterSpacing: -0.3,
       color: colors.text,
     },
     orderMeta: {
       fontSize: 13,
       color: colors.textMuted,
-      marginTop: 2,
+      marginTop: 3,
       marginBottom: spacing.lg,
     },
     /* ── Tracker ── */
@@ -539,7 +561,7 @@ function createStyles(colors: ColorPalette) {
       backgroundColor: colors.primary,
     },
     dotCheck: {
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontSize: 12,
       fontWeight: '900',
     },
@@ -620,14 +642,14 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '500',
     },
     etaTime: {
-      fontSize: 16,
-      fontWeight: '800',
+      fontFamily: SERIF_BOLD,
+      fontSize: 17,
       color: colors.primaryDark,
     },
     /* ── Celebration ── */
     celebCard: {
       backgroundColor: colors.primaryLight,
-      borderRadius: radius.lg,
+      borderRadius: radius.xl,
       padding: spacing.xl,
       alignItems: 'center',
       gap: spacing.xs,
@@ -637,12 +659,12 @@ function createStyles(colors: ColorPalette) {
       marginBottom: spacing.xs,
     },
     celebTitle: {
-      fontSize: 22,
-      fontWeight: '900',
+      fontFamily: SERIF_BOLD,
+      fontSize: 24,
       color: colors.primaryDark,
     },
     celebSub: {
-      fontSize: 13,
+      fontSize: 13.5,
       color: colors.primary,
       textAlign: 'center',
     },
@@ -672,7 +694,7 @@ function createStyles(colors: ColorPalette) {
       elevation: 4,
     },
     ctaBtnText: {
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontSize: 15,
       fontWeight: '800',
     },

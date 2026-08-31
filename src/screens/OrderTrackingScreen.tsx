@@ -36,6 +36,7 @@ import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { confirm } from '../utils/confirm';
 import { ColorPalette, radius, spacing } from '../theme';
+import { SERIF_BOLD } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrderTracking'>;
 
@@ -67,6 +68,8 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
   const [orderTotal, setOrderTotal] = useState(0);
   const settings = useStoreSettings();
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const celebScale = useRef(new Animated.Value(0.9)).current;
+  const celebOpacity = useRef(new Animated.Value(0)).current;
 
   const isCancelled = orderStatus === 'cancelled';
   const currentStep = statusToStep(orderStatus);
@@ -139,6 +142,15 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
     loop.start();
     return () => loop.stop();
   }, [currentStep, isDelivered, pulseAnim]);
+
+  /* One-shot arrival moment, reacting to the real status only. */
+  useEffect(() => {
+    if (!isDelivered) return;
+    Animated.parallel([
+      Animated.spring(celebScale, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 160, mass: 0.7 }),
+      Animated.timing(celebOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, [isDelivered, celebScale, celebOpacity]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -288,11 +300,16 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
 
         {/* ETA or celebration */}
         {isCancelled ? null : isDelivered ? (
-          <View style={styles.celebCard}>
+          <Animated.View
+            style={[
+              styles.celebCard,
+              { opacity: celebOpacity, transform: [{ scale: celebScale }] },
+            ]}
+          >
             <Text style={styles.celebEmoji}>🎉</Text>
             <Text style={styles.celebTitle}>Delivered!</Text>
             <Text style={styles.celebSub}>Hope you enjoy everything, fresh from our oven.</Text>
-          </View>
+          </Animated.View>
         ) : (
           <View style={styles.etaCard}>
             <Ionicons name="time-outline" size={15} color={colors.primary} />
@@ -356,7 +373,7 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
               disabled={isCancelling}
             >
               {isCancelling ? (
-                <ActivityIndicator color="#DC2626" size="small" />
+                <ActivityIndicator color={colors.danger} size="small" />
               ) : (
                 <Text style={styles.cancelBtnText}>Cancel Order</Text>
               )}
@@ -395,7 +412,7 @@ function createStyles(colors: ColorPalette) {
       alignItems: 'center',
       gap: spacing.xs,
       alignSelf: 'flex-start',
-      backgroundColor: '#E0F7EB',
+      backgroundColor: colors.primaryLight,
       borderRadius: radius.full,
       paddingHorizontal: spacing.md,
       paddingVertical: 5,
@@ -403,12 +420,15 @@ function createStyles(colors: ColorPalette) {
     liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
     liveText: { fontSize: 12, fontWeight: '700', color: colors.success },
 
+    /* Calm, not alarm-red — the order simply left the sequence. */
     cancelledBanner: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
-      backgroundColor: '#FEE2E2',
+      backgroundColor: colors.surfaceMuted,
       borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
       padding: spacing.md,
     },
     cancelledIcon: {
@@ -416,15 +436,15 @@ function createStyles(colors: ColorPalette) {
       height: 28,
       borderRadius: 14,
       backgroundColor: colors.danger,
-      color: '#FFFFFF',
+      color: colors.textOnPrimary,
       fontSize: 14,
       fontWeight: '900',
       textAlign: 'center',
       lineHeight: 28,
       overflow: 'hidden',
     },
-    cancelledTitle: { fontSize: 15, fontWeight: '800', color: '#991B1B' },
-    cancelledSub: { fontSize: 12, color: '#B91C1C', marginTop: 1 },
+    cancelledTitle: { fontFamily: SERIF_BOLD, fontSize: 16, color: colors.text },
+    cancelledSub: { fontSize: 12.5, color: colors.textMuted, marginTop: 1 },
 
     riderCard: {
       backgroundColor: colors.surface,
@@ -441,9 +461,9 @@ function createStyles(colors: ColorPalette) {
       backgroundColor: colors.primaryDark,
       alignItems: 'center', justifyContent: 'center',
     },
-    riderInitial: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
+    riderInitial: { fontSize: 18, fontWeight: '800', color: colors.textOnPrimary },
     riderInfo: { flex: 1, gap: 2 },
-    riderName: { fontSize: 15, fontWeight: '700', color: colors.text },
+    riderName: { fontFamily: SERIF_BOLD, fontSize: 15, color: colors.text },
     riderMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     riderDetail: { fontSize: 12, color: colors.textMuted },
     riderDot: { fontSize: 12, color: colors.textMuted },
@@ -469,7 +489,7 @@ function createStyles(colors: ColorPalette) {
     connectorSpacer: { flex: 1, minHeight: 6 },
     dot: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     dotDone: { backgroundColor: colors.primary },
-    dotCheck: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+    dotCheck: { color: colors.textOnPrimary, fontSize: 12, fontWeight: '900' },
     dotActive: { backgroundColor: 'rgba(26,158,85,0.2)', borderWidth: 2, borderColor: colors.primary },
     dotActiveFill: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
     dotPending: { backgroundColor: colors.surfaceMuted, borderWidth: 2, borderColor: colors.border },
@@ -489,18 +509,18 @@ function createStyles(colors: ColorPalette) {
     },
     etaIcon: { fontSize: 22 },
     etaLabel: { fontSize: 11, color: colors.primary, fontWeight: '500' },
-    etaTime: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
+    etaTime: { fontFamily: SERIF_BOLD, fontSize: 17, color: colors.primaryDark },
 
     celebCard: {
       backgroundColor: colors.primaryLight,
-      borderRadius: radius.lg,
+      borderRadius: radius.xl,
       padding: spacing.xl,
       alignItems: 'center',
       gap: spacing.xs,
     },
     celebEmoji: { fontSize: 42, marginBottom: spacing.xs },
-    celebTitle: { fontSize: 22, fontWeight: '900', color: colors.primaryDark },
-    celebSub: { fontSize: 13, color: colors.primary, textAlign: 'center' },
+    celebTitle: { fontFamily: SERIF_BOLD, fontSize: 24, color: colors.primaryDark },
+    celebSub: { fontSize: 13.5, color: colors.primary, textAlign: 'center' },
 
     itemsCard: {
       backgroundColor: colors.surface,
