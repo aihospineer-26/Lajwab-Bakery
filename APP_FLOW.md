@@ -121,8 +121,7 @@ Then `place_order(items, details)` over RPC. A `requestId` is minted on the
 first tap and held across retries, so a double tap cannot create two orders.
 
 Delivery slots are built from the cart's lead time — adding a pre-order item
-removes the express slot and re-selects the first valid one. Payment is COD
-only; there is no gateway.
+removes the express slot and re-selects the first valid one. Payment is prepaid UPI or COD -- see 1.7a. There is no gateway.
 
 ## 1.7 Order lifecycle
 
@@ -155,6 +154,65 @@ Customer wording differs from the operational wording by design: `packed` reads
 as "Being Prepared" to the person waiting (`CUSTOMER_STATUS_LABEL`) and stays
 "Packed" on the dashboard (`STATUS_LABEL`). A customer's token cannot write any
 status but `cancelled`, and only from `placed` or `accepted`.
+
+## 1.7a Payment
+
+Two methods, mutually exclusive, and payment state is kept out of the order
+lifecycle entirely — `orders.payment_status` is `pending` or `paid` and moves
+independently of `orders.status`.
+
+```
+Prepaid UPI                        Cash on Delivery
+     ↓                                   ↓
+order placed, payment_status pending     order placed, payment_status pending
+     ↓                                   ↓
+customer pays into the bakery's VPA      bakery bakes and delivers
+     ↓                                   ↓
+bakery checks its UPI app                money changes hands at the door
+     ↓
+dashboard → "Mark payment received"
+     ↓
+payment_status = paid
+```
+
+There is no gateway and no webhook in v1, so a person at the bakery *is* the
+confirmation step. Everything else follows from that: opening the UPI app or
+returning from it changes nothing, and the customer screen says
+"Waiting for the bakery to confirm your payment" until somebody has actually
+looked.
+
+**Nothing about payment gates the order lifecycle.** A COD order walks
+`placed → … → delivered` with `payment_status` still `pending`, which is the
+truth until the cash is collected. A prepaid order can be accepted and baked
+before confirmation too — the dashboard simply keeps showing `AWAITING PAYMENT`
+so the baker knows. No extra order status was invented; the trigger would not
+have recognised one.
+
+**What the database enforces**, not the UI:
+
+- `orders_enforce_payment` (BEFORE UPDATE) rejects any change to
+  `payment_status` from a caller `is_staff()` does not recognise — including
+  the service-role key, which carries no `app_metadata.role`.
+- `paid → pending` is refused for everyone. Confirmation is one-way.
+- `total`, `discount`, `delivery_fee`, `item_count`, `user_id`, `coupon_code`,
+  `request_id` and `payment_method` are immutable after `place_order` writes
+  them. This is the trigger's real reason for existing: RLS gates rows, not
+  columns, and `orders_cancel_own` only constrains `status` in its `WITH CHECK`
+  — so without it a customer could set `payment_status = 'paid'`, or rewrite
+  their own total, inside the very statement that cancels their order.
+- `authenticated` may UPDATE exactly two columns on `orders`: `status` and
+  `payment_status`. Nothing else is writable from any client.
+- `place_order` refuses any method but `cod` and `upi`, and refuses a UPI order
+  outright while no VPA is configured.
+
+**The UPI ID** lives in `store_settings.upi_vpa`, editable from the dashboard's
+Account tab, with no bundled fallback — a stale VPA compiled into an APK would
+send money to the wrong place long after the owner changed it. Blank means
+prepaid checkout does not appear at all, on either side of the client.
+
+**The payment reference** is `Lajwab <ref>`, where `<ref>` is `formatOrderRef`
+of the real order id — the same six characters the customer, the dashboard and
+the order history all show. There is no second identifier anywhere in the flow.
 
 ## 1.8 Account section
 

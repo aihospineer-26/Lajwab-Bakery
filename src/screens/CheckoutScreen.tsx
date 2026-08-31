@@ -22,6 +22,7 @@ import { PaymentMethod } from '../data/orders';
 import { dayLabel, leadTimeForCart, leadTimeLabel } from '../data/preOrder';
 import { validatePincode } from '../data/serviceability';
 import { digitsOnly, formatMobile, isValidMobile } from '../services/otp';
+import { useStoreSettings } from '../services/storeSettings';
 import { useAuth } from '../state/AuthContext';
 import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
@@ -52,17 +53,28 @@ type PaymentOption = {
   comingSoon?: boolean;
 };
 
-/* Cash on delivery, because that is what the bakery actually accepts.
+/* Two methods, mutually exclusive.
  *
- * Greyed "UPI — SOON" and "Credit / Debit Card — SOON" rows sat under this one.
- * No gateway is integrated and no date was ever set, so the badge was promising
- * a roadmap on the bakery's behalf that nobody had agreed to -- and the FAQ now
- * says cash only, which the rows contradicted. Add them back the day a gateway
- * is live, not before. */
-const PAYMENT_METHODS: PaymentOption[] = [
-  { id: 'cod', label: 'Cash on Delivery', sub: 'Pay when your order arrives', icon: '💵' },
-];
+ * Prepaid UPI only appears once the owner has set a VPA on the dashboard --
+ * an unconfigured one would be a payment screen with nowhere to send the
+ * money. place_order refuses a UPI order in that state too, so the option
+ * cannot be forced back on from a tampered client.
+ *
+ * COD covers whatever the bakery takes at the door, cash or a scan. From the
+ * system's side it stays one thing: money not yet collected. */
+const COD_OPTION: PaymentOption = {
+  id: 'cod',
+  label: 'Cash on Delivery',
+  sub: 'Pay when your order arrives',
+  icon: '💵',
+};
 
+const UPI_OPTION: PaymentOption = {
+  id: 'upi',
+  label: 'Pay online — UPI',
+  sub: 'Pay now, before we prepare your order',
+  icon: '📲',
+};
 export function CheckoutScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -79,6 +91,14 @@ export function CheckoutScreen({ navigation }: Props) {
   const { products, refetchProducts } = useCatalog();
   const { session } = useAuth();
   const { address } = useLocation();
+  const settings = useStoreSettings();
+
+  /* Prepaid appears only when there is somewhere for the money to go. */
+  const upiVpa = settings.upiVpa.trim();
+  const paymentMethods = useMemo(
+    () => (upiVpa ? [UPI_OPTION, COD_OPTION] : [COD_OPTION]),
+    [upiVpa],
+  );
 
   const leadDays = useMemo(
     () => leadTimeForCart(Object.keys(quantities).filter((id) => (quantities[id] ?? 0) > 0)),
@@ -324,7 +344,7 @@ export function CheckoutScreen({ navigation }: Props) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Method</Text>
           <View style={styles.slotList}>
-            {PAYMENT_METHODS.map(method => {
+            {paymentMethods.map(method => {
               const active = selectedPayment === method.id;
               const disabled = method.comingSoon === true;
               return (
@@ -354,6 +374,12 @@ export function CheckoutScreen({ navigation }: Props) {
               );
             })}
           </View>
+          {selectedPayment === 'upi' ? (
+            <Text style={styles.payNote}>
+              You will see the UPI details on the next screen. The bakery starts
+              preparing your order once they have confirmed your payment.
+            </Text>
+          ) : null}
         </View>
 
         {/* Order summary */}
@@ -530,6 +556,13 @@ function createStyles(colors: ColorPalette) {
     },
     slotRowDisabled: {
       opacity: 0.45,
+    },
+    payNote: {
+      fontSize: 12.5,
+      lineHeight: 18,
+      color: colors.textMuted,
+      marginTop: spacing.sm,
+      paddingHorizontal: spacing.xs,
     },
     comingSoon: {
       fontSize: 9,

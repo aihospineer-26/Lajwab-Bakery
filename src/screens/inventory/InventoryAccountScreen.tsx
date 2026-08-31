@@ -30,6 +30,7 @@ export function InventoryAccountScreen() {
      developer being free to type it in. The owner enters it here instead. */
   const [fssai, setFssai] = useState('');
   const [gstin, setGstin] = useState('');
+  const [upiVpa, setUpiVpa] = useState('');
   const [legalState, setLegalState] = useState<'loading' | 'idle' | 'saving' | 'saved' | 'error'>('loading');
   const [legalError, setLegalError] = useState<string | null>(null);
 
@@ -38,6 +39,7 @@ export function InventoryAccountScreen() {
       .then((s) => {
         setFssai(s.fssai);
         setGstin(s.gstin);
+        setUpiVpa(s.upiVpa);
         setLegalState('idle');
       })
       .catch(() => setLegalState('idle'));
@@ -47,7 +49,7 @@ export function InventoryAccountScreen() {
     setLegalState('saving');
     setLegalError(null);
     try {
-      await saveStoreSettings({ fssai, gstin });
+      await saveStoreSettings({ fssai, gstin, upiVpa });
       setLegalState('saved');
     } catch (err) {
       setLegalState('error');
@@ -72,7 +74,7 @@ export function InventoryAccountScreen() {
           </View>
 
           <View style={styles.legalCard}>
-            <Text style={styles.legalTitle}>Licence &amp; registration</Text>
+            <Text style={styles.legalTitle}>Licence, registration &amp; payment</Text>
             <Text style={styles.legalHint}>
               Your FSSAI number is shown to customers on the Help and Terms screens. It is
               required by law for a food business. While it is blank, nothing is displayed.
@@ -101,6 +103,26 @@ export function InventoryAccountScreen() {
               editable={legalState !== 'loading' && legalState !== 'saving'}
               accessibilityLabel="GSTIN"
             />
+
+            <Text style={styles.legalLabel}>UPI ID / VPA</Text>
+            <TextInput
+              style={styles.legalInput}
+              value={upiVpa}
+              onChangeText={setUpiVpa}
+              placeholder="yourshop@okhdfcbank"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              editable={legalState !== 'loading' && legalState !== 'saving'}
+              accessibilityLabel="UPI ID"
+            />
+            <Text style={styles.legalHint}>
+              Customers pay into this before you prepare their order. Leave it blank
+              and online payment simply does not appear at checkout — everything
+              stays Cash on Delivery. Check the ID character by character: a wrong
+              one sends your customers' money to a stranger.
+            </Text>
 
             {legalError ? <Text style={styles.legalError}>{legalError}</Text> : null}
 

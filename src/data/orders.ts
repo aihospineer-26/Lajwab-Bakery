@@ -20,6 +20,7 @@ export type Order = {
      because rows stored before migration 002 lack them. */
   deliveryAddress?: DeliveryAddress;
   paymentMethod?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
   deliverySlot?: string;
   couponCode?: string;
   discount?: number;
@@ -30,7 +31,16 @@ export type Order = {
   customerPhone?: string;
 };
 
-export type PaymentMethod = 'cod' | 'upi' | 'card';
+/* Two methods, and only two. 'card' used to be permitted here and in the check
+   constraint with nothing behind it, so an order could be recorded as
+   card-paid that never was. */
+export type PaymentMethod = 'cod' | 'upi';
+
+/* Deliberately separate from OrderStatus. A prepaid order still walks the
+   ordinary lifecycle -- the bakery just knows not to start baking until the
+   money has landed -- and merging the two would mean inventing a status the
+   trigger does not recognise. */
+export type PaymentStatus = 'pending' | 'paid';
 
 export type DeliveryAddress = {
   label: string;
@@ -138,4 +148,62 @@ export function formatOrderRef(id: string): string {
   const compact = id.replace(/-/g, '');
   if (compact.length <= 8) return id.toUpperCase();
   return compact.slice(-6).toUpperCase();
+}
+
+/* ---------- Payment ----------
+ *
+ * Payment state is reported alongside the order's stage, never folded into it.
+ * "Being Prepared · UPI — Paid" tells the customer two true things; a single
+ * merged label would have to drop one of them.
+ */
+
+export function normalizePaymentStatus(raw: string | null | undefined): PaymentStatus {
+  return raw === 'paid' ? 'paid' : 'pending';
+}
+
+export function normalizePaymentMethod(raw: string | null | undefined): PaymentMethod {
+  return raw === 'upi' ? 'upi' : 'cod';
+}
+
+/* What the customer is told about their money.
+ *
+ * A prepaid order says "Awaiting confirmation" and keeps saying it until
+ * somebody at the bakery has actually seen the payment arrive -- opening the
+ * UPI app, or coming back from it, proves nothing and changes nothing here. */
+export function paymentLabel(method: PaymentMethod, status: PaymentStatus): string {
+  if (method === 'cod') return 'Cash on Delivery';
+  return status === 'paid' ? 'UPI — Paid' : 'UPI — Awaiting confirmation';
+}
+
+/** The bakery's version: what the queue needs to show at a glance. */
+export function paymentBadge(method: PaymentMethod, status: PaymentStatus): string {
+  if (method === 'cod') return 'COD';
+  return status === 'paid' ? 'PAID' : 'AWAITING PAYMENT';
+}
+
+export function isAwaitingPayment(method: PaymentMethod, status: PaymentStatus): boolean {
+  return method === 'upi' && status === 'pending';
+}
+
+/* The note the customer puts on the transfer, and the string the bakery matches
+   it against in their UPI app. Derived from the real order id -- there is no
+   second identifier anywhere in this flow. */
+export function paymentNote(orderId: string): string {
+  return 'Lajwab ' + formatOrderRef(orderId);
+}
+
+/* A UPI intent link. Android resolves upi:// to whichever apps are installed;
+   desktop browsers generally do not, which is why the VPA is always shown as
+   copyable text beside the button rather than hidden behind it.
+   `am` is advisory -- several UPI apps let the payer edit the amount, so the
+   bakery has to check the figure and not merely that something arrived. */
+export function upiIntentUrl(vpa: string, payeeName: string, amount: number, orderId: string): string {
+  const q = [
+    'pa=' + encodeURIComponent(vpa.trim()),
+    'pn=' + encodeURIComponent(payeeName),
+    'am=' + encodeURIComponent(String(amount)),
+    'cu=INR',
+    'tn=' + encodeURIComponent(paymentNote(orderId)),
+  ].join('&');
+  return 'upi://pay?' + q;
 }

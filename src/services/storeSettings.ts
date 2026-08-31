@@ -15,9 +15,14 @@ import { supabase } from './supabase';
 export type StoreSettings = {
   fssai: string;
   gstin: string;
+  /* The bakery's UPI ID. Empty means online payment is not set up: checkout
+     hides the prepaid option and place_order refuses a UPI order, so an unset
+     VPA can never reach a customer as a payment screen with nowhere to send
+     the money. Not a secret -- it is printed on the shop counter. */
+  upiVpa: string;
 };
 
-const FALLBACK: StoreSettings = { fssai: STORE.fssai, gstin: STORE.gstin };
+const FALLBACK: StoreSettings = { fssai: STORE.fssai, gstin: STORE.gstin, upiVpa: '' };
 
 let cache: StoreSettings | null = null;
 let inFlight: Promise<StoreSettings> | null = null;
@@ -29,7 +34,7 @@ export async function fetchStoreSettings(force = false): Promise<StoreSettings> 
   inFlight = (async () => {
     const { data, error } = await supabase
       .from('store_settings')
-      .select('fssai, gstin')
+      .select('fssai, gstin, upi_vpa')
       .maybeSingle();
 
     /* A missing row or an unreachable database must never blank out a licence
@@ -41,6 +46,9 @@ export async function fetchStoreSettings(force = false): Promise<StoreSettings> 
     cache = {
       fssai: (data.fssai ?? '').trim() || FALLBACK.fssai,
       gstin: (data.gstin ?? '').trim() || FALLBACK.gstin,
+      /* No bundled fallback on purpose: a stale VPA baked into a build would
+         send money to the wrong place long after the owner changed it. */
+      upiVpa: (data.upi_vpa ?? '').trim(),
     };
     return cache;
   })().finally(() => {
@@ -55,6 +63,7 @@ export async function saveStoreSettings(patch: Partial<StoreSettings>): Promise<
   const row: Record<string, string> = {};
   if (patch.fssai !== undefined) row.fssai = patch.fssai.trim();
   if (patch.gstin !== undefined) row.gstin = patch.gstin.trim();
+  if (patch.upiVpa !== undefined) row.upi_vpa = patch.upiVpa.trim();
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase.from('store_settings').update(row).eq('id', true);

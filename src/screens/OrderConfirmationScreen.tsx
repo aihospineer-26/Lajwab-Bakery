@@ -16,10 +16,14 @@ import { RootStackParamList } from '../navigation/types';
 import {
   CUSTOMER_STATUS_LABEL,
   formatOrderRef,
+  isAwaitingPayment,
   Order,
   ORDER_STEPS,
+  paymentLabel,
   statusToStep,
 } from '../data/orders';
+import { UpiPaymentPanel } from '../components/UpiPaymentPanel';
+import { useStoreSettings } from '../services/storeSettings';
 import { fetchOrderById } from '../services/orders';
 import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
@@ -41,6 +45,7 @@ export function OrderConfirmationScreen({ navigation, route }: Props) {
   const { orderId } = route.params;
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const settings = useStoreSettings();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +94,12 @@ export function OrderConfirmationScreen({ navigation, route }: Props) {
   }, [orderId]);
 
   const status = order?.status ?? 'placed';
+  const method = order?.paymentMethod ?? 'cod';
+  const payStatus = order?.paymentStatus ?? 'pending';
+  /* The bakery has not seen the money yet, so the panel stays up -- including
+     on a later visit, because a customer who closed the app still has to pay
+     somewhere. It disappears only when the bakery confirms. */
+  const awaitingPayment = isAwaitingPayment(method, payStatus);
   const isCancelled = status === 'cancelled';
   const isDelivered = status === 'delivered';
   const currentStep = statusToStep(status);
@@ -193,9 +204,23 @@ export function OrderConfirmationScreen({ navigation, route }: Props) {
             <Text style={styles.orderLabel}>YOUR ORDER</Text>
             <Text style={styles.orderId}>#{formatOrderRef(order.id)}</Text>
             <Text style={styles.orderMeta}>
-              {order.itemCount} item{order.itemCount !== 1 ? 's' : ''} · ₹{order.total} ·{' '}
-              {CUSTOMER_STATUS_LABEL[status]}
+              {order.itemCount} item{order.itemCount !== 1 ? 's' : ''} · ₹{order.total}
             </Text>
+
+            {/* Two separate facts, reported separately. Folding them into one
+                line would mean dropping whichever mattered less that minute. */}
+            <View style={styles.stateRows}>
+              <View style={styles.stateRow}>
+                <Text style={styles.stateLabel}>Order status</Text>
+                <Text style={styles.stateValue}>{CUSTOMER_STATUS_LABEL[status]}</Text>
+              </View>
+              <View style={styles.stateRow}>
+                <Text style={styles.stateLabel}>Payment</Text>
+                <Text style={[styles.stateValue, awaitingPayment && styles.stateValueWarn]}>
+                  {paymentLabel(method, payStatus)}
+                </Text>
+              </View>
+            </View>
 
             {isCancelled ? null : (
               <View style={styles.tracker}>
@@ -266,6 +291,21 @@ export function OrderConfirmationScreen({ navigation, route }: Props) {
               </View>
             )}
           </View>
+
+          {/* Only while the money is still outstanding, and never on a
+              cancelled order -- asking someone to pay for something that will
+              not arrive is the worst thing this screen could do. */}
+          {awaitingPayment && !isCancelled && settings.upiVpa.trim() ? (
+            <UpiPaymentPanel
+              orderId={order.id}
+              amount={order.total}
+              vpa={settings.upiVpa.trim()}
+            />
+          ) : null}
+
+          {method === 'cod' && !isCancelled ? (
+            <Text style={styles.waitNote}>Pay when your order arrives.</Text>
+          ) : null}
 
           {/* Said plainly, because a tracker that sits still reads as broken.
               The step only moves when the bakery moves it, so the screen has to
@@ -541,6 +581,19 @@ function createStyles(colors: ColorPalette) {
       color: colors.textMuted,
       marginTop: 1,
     },
+    /* ── Order / payment state ── */
+    stateRows: {
+      gap: 6,
+      marginTop: spacing.sm,
+      marginBottom: spacing.lg,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    stateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
+    stateLabel: { fontSize: 13, color: colors.textMuted },
+    stateValue: { fontSize: 13, fontWeight: '700', color: colors.text, flexShrink: 1, textAlign: 'right' },
+    stateValueWarn: { color: colors.primaryDark },
     /* ── Wait note ── */
     waitNote: {
       fontSize: 12.5,

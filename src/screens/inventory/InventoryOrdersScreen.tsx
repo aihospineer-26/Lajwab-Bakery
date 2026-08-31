@@ -13,11 +13,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Skeleton } from '../../components/Skeleton';
-import { formatOrderRef, Order, OrderItem, OrderStatus, STATUS_LABEL } from '../../data/orders';
+import {
+  formatOrderRef,
+  isAwaitingPayment,
+  Order,
+  OrderItem,
+  OrderStatus,
+  paymentBadge,
+  STATUS_LABEL,
+} from '../../data/orders';
 import {
   cancelOrderAsStaff,
   fetchAllOrders,
   fetchOrderItems,
+  markPaymentReceived,
   updateOrderStatus,
 } from '../../services/orders';
 import { useTheme } from '../../state/ThemeContext';
@@ -149,6 +158,38 @@ export function InventoryOrdersScreen() {
     [load],
   );
 
+  /* Staff-only, one column, one direction. The database refuses this write to
+     anyone is_staff() does not recognise, and refuses to reverse it afterwards,
+     so the dialog below is about care rather than security -- it puts the
+     amount and the note in front of whoever is about to vouch for the money. */
+  const confirmPayment = useCallback(
+    async (order: Order) => {
+      const ref = formatOrderRef(order.id);
+      const ok = await confirm(
+        'Mark #' + ref + ' as paid?',
+        'Check your UPI app for a payment of ₹' + order.total + ' with the note "Lajwab ' + ref + '". This cannot be undone.',
+        'Payment received',
+        'Not yet',
+      );
+      if (!ok) return;
+
+      setBusyId(order.id);
+      setActionError(null);
+      try {
+        await markPaymentReceived(order.id);
+        setOrders((prev) =>
+          prev.map((o) => (o.id === order.id ? { ...o, paymentStatus: 'paid' as const } : o)),
+        );
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : 'Could not confirm payment');
+        await load('refresh');
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [load],
+  );
+
   const cancel = useCallback(
     async (order: Order) => {
       const ok = await confirm(
@@ -204,6 +245,7 @@ export function InventoryOrdersScreen() {
     const mins = minutesWaiting(order);
     const isLate = order.status === 'placed' && mins !== null && mins * 60000 >= LATE_AFTER_MS;
     const lines = items[order.id];
+    const unpaid = isAwaitingPayment(order.paymentMethod ?? 'cod', order.paymentStatus ?? 'pending');
 
     return (
       <View style={[styles.card, isLate && styles.cardLate]}>
@@ -228,6 +270,14 @@ export function InventoryOrdersScreen() {
             <View style={[styles.statusPill, statusTone(order.status, colors)]}>
               <Text style={[styles.statusText, { color: statusColor(order.status, colors) }]}>
                 {STATUS_LABEL[order.status]}
+              </Text>
+            </View>
+            {/* Payment sits beside the stage, never merged into it -- an order
+                can be out for delivery and still unpaid, and the baker needs to
+                see both facts before touching it. */}
+            <View style={[styles.payPill, unpaid ? styles.payPillUnpaid : styles.payPillSettled]}>
+              <Text style={[styles.payPillText, unpaid && styles.payPillTextUnpaid]}>
+                {paymentBadge(order.paymentMethod ?? 'cod', order.paymentStatus ?? 'pending')}
               </Text>
             </View>
           </View>
@@ -286,7 +336,7 @@ export function InventoryOrdersScreen() {
                 </Text>
                 <View style={styles.payRow}>
                   <Text style={styles.payTag}>
-                    {order.paymentMethod === 'cod' ? 'CASH ON DELIVERY' : (order.paymentMethod ?? '').toUpperCase()}
+                    {paymentBadge(order.paymentMethod ?? 'cod', order.paymentStatus ?? 'pending')}
                   </Text>
                   {order.deliverySlot ? <Text style={styles.slotTag}>{order.deliverySlot}</Text> : null}
                 </View>
@@ -326,8 +376,26 @@ export function InventoryOrdersScreen() {
           </View>
         )}
 
-        {(next || order.status !== 'delivered') && order.status !== 'cancelled' && (
+        {/* `unpaid` is in here so a prepaid order that reached the door before
+            anyone checked the money can still be reconciled afterwards -- the
+            row would otherwise lose its only confirm button on delivery. */}
+        {(next || unpaid || order.status !== 'delivered') && order.status !== 'cancelled' && (
           <View style={styles.actionRow}>
+            {/* Offered before the stage button, because on a prepaid order the
+                money is the thing to check first. It never gates the workflow:
+                staff can still accept and bake, the badge just keeps saying
+                AWAITING PAYMENT until somebody has actually looked. */}
+            {unpaid && (
+              <Pressable
+                style={[styles.payAction, isBusy && styles.actionDisabled]}
+                onPress={() => confirmPayment(order)}
+                disabled={isBusy}
+                accessibilityRole="button"
+              >
+                <Feather name="check-circle" size={14} color={colors.textOnPrimary} />
+                <Text style={styles.payActionText}>Mark payment received</Text>
+              </Pressable>
+            )}
             {next && (
               <Pressable
                 style={[styles.primaryAction, isBusy && styles.actionDisabled]}
@@ -685,6 +753,27 @@ function createStyles(colors: ColorPalette) {
     },
     latePillText: { fontSize: 10, fontWeight: '800', color: colors.danger },
 
+    payPill: {
+      borderRadius: radius.full,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+    },
+    payPillUnpaid: { backgroundColor: '#FDECEA' },
+    payPillSettled: { backgroundColor: colors.surfaceMuted },
+    payPillText: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.5, color: colors.textMuted },
+    payPillTextUnpaid: { color: '#B03A2E' },
+    payAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: colors.primaryDark,
+      borderRadius: radius.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      flex: 1,
+    },
+    payActionText: { color: colors.textOnPrimary, fontSize: 13, fontWeight: '800' },
     statusPill: {
       paddingHorizontal: spacing.sm,
       paddingVertical: 3,

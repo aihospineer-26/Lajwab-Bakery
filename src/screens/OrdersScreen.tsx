@@ -4,7 +4,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
-import { CUSTOMER_STATUS_LABEL, formatOrderRef, Order, OrderStatus } from '../data/orders';
+import {
+  CUSTOMER_STATUS_LABEL,
+  formatOrderRef,
+  isAwaitingPayment,
+  Order,
+  OrderStatus,
+  paymentLabel,
+} from '../data/orders';
 import { RootStackParamList } from '../navigation/types';
 import { fetchOrders } from '../services/orders';
 import { useTheme } from '../state/ThemeContext';
@@ -119,6 +126,18 @@ export function OrdersScreen({ navigation }: Props) {
 
                 <View style={styles.divider} />
 
+                {/* Kept on its own line, not merged into the status pill: an
+                    order can be out for delivery and still unpaid. */}
+                <Text
+                  style={[
+                    styles.payLine,
+                    isAwaitingPayment(order.paymentMethod ?? 'cod', order.paymentStatus ?? 'pending') &&
+                      styles.payLineWarn,
+                  ]}
+                >
+                  {paymentLabel(order.paymentMethod ?? 'cod', order.paymentStatus ?? 'pending')}
+                </Text>
+
                 <View style={styles.cardBottom}>
                   <View style={styles.itemsRow}>
                     <Ionicons name="bag-handle-outline" size={14} color={colors.textMuted} style={{ marginRight: 4 }} />
@@ -213,6 +232,12 @@ function createStyles(colors: ColorPalette) {
       fontSize: 12,
       fontWeight: '700',
     },
+    payLine: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginBottom: spacing.sm,
+    },
+    payLineWarn: { color: colors.primaryDark, fontWeight: '700' },
     divider: {
       height: 1,
       backgroundColor: colors.border,

@@ -2,11 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DeliveryAddress,
   isCancellable,
+  normalizePaymentMethod,
+  normalizePaymentStatus,
   normalizeStatus,
   Order,
   OrderItem,
   OrderStatus,
   PaymentMethod,
+  PaymentStatus,
 } from '../data/orders';
 import { decrementLocalStock } from './inventory';
 import { supabase } from './supabase';
@@ -19,6 +22,7 @@ type OrderRow = {
   created_at: string;
   delivery_address: DeliveryAddress | null;
   payment_method: PaymentMethod | null;
+  payment_status: string | null;
   delivery_slot: string | null;
   coupon_code: string | null;
   discount: number | null;
@@ -66,7 +70,7 @@ export type OrderDetails = {
 };
 
 const ORDER_COLUMNS =
-  'id, total, item_count, status, created_at, delivery_address, payment_method, delivery_slot, coupon_code, discount, delivery_fee, customer_name, customer_phone';
+  'id, total, item_count, status, created_at, delivery_address, payment_method, payment_status, delivery_slot, coupon_code, discount, delivery_fee, customer_name, customer_phone';
 
 /* A v4 uuid for the idempotency key. crypto.randomUUID exists on web and on
    recent Hermes; the fallback keeps older Android runtimes working. Only ever
@@ -90,7 +94,8 @@ function mapOrderRow(row: OrderRow): Order {
     status: normalizeStatus(row.status),
     createdAt: row.created_at,
     deliveryAddress: row.delivery_address ?? undefined,
-    paymentMethod: row.payment_method ?? undefined,
+    paymentMethod: normalizePaymentMethod(row.payment_method),
+    paymentStatus: normalizePaymentStatus(row.payment_status),
     deliverySlot: row.delivery_slot ?? undefined,
     couponCode: row.coupon_code ?? undefined,
     discount: row.discount ?? undefined,
@@ -161,6 +166,7 @@ export async function placeOrder(items: NewOrderItem[], details: OrderDetails): 
       createdAt: now,
       deliveryAddress: details.address,
       paymentMethod: details.paymentMethod,
+      paymentStatus: 'pending',
       deliverySlot: details.deliverySlot,
       couponCode: details.couponCode,
       discount: details.discount,
@@ -392,6 +398,37 @@ export async function cancelOrderAsStaff(orderId: string): Promise<void> {
   if (error) throw error;
   if (!data || data.length === 0) {
     throw new Error('This order is already delivered or cancelled');
+  }
+}
+
+/** Staff-only: record that the bakery has seen the money arrive.
+ *
+ *  Deliberately the narrowest write in the app -- one column, one direction.
+ *  The `payment_status = 'pending'` bound makes a double tap a no-op rather
+ *  than a second confirmation, and the orders_enforce_payment trigger refuses
+ *  the write outright for anyone `is_staff()` does not recognise, so a customer
+ *  cannot reach this even by calling PostgREST directly.
+ */
+export async function markPaymentReceived(orderId: string): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession();
+
+  if (!sessionData.session) {
+    const existing = await readLocalOrders();
+    await writeLocalOrders(
+      existing.map(o => (o.id === orderId ? { ...o, paymentStatus: 'paid' as PaymentStatus } : o)),
+    );
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ payment_status: 'paid' })
+    .eq('id', orderId)
+    .eq('payment_status', 'pending')
+    .select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('This payment is already confirmed');
   }
 }
 

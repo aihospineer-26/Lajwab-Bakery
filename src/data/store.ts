@@ -63,4 +63,9 @@ export const STORE_ADDRESS_LINE = `${STORE.area}, ${STORE.city} ${STORE.pincode}
    [ ] deliveryEta — the window quoted on every express order. Nobody has
                      confirmed 45–60 minutes with the bakery; it is the app
                      making a delivery promise on their behalf.
+
+   The UPI ID is deliberately NOT here. It lives in store_settings and is set
+   from the dashboard Account tab, so the owner can change where the money
+   goes without a release -- and so a stale VPA can never be baked into an
+   APK. Blank means prepaid checkout does not appear at all.
    ------------------------------------------------------------------ */

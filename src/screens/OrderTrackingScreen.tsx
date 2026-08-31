@@ -17,13 +17,19 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import {
   CUSTOMER_STATUS_LABEL,
   formatOrderRef,
+  isAwaitingPayment,
   isCancellable,
   normalizeStatus,
   ORDER_STEPS,
   OrderItem,
   OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  paymentLabel,
   statusToStep,
 } from '../data/orders';
+import { UpiPaymentPanel } from '../components/UpiPaymentPanel';
+import { useStoreSettings } from '../services/storeSettings';
 import { RootStackParamList } from '../navigation/types';
 import { cancelOrder, fetchOrderById, fetchOrderItems } from '../services/orders';
 import { STORE } from '../data/store';
@@ -53,10 +59,18 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
      of the route param, which is exactly the fabricated progress this screen
      stopped showing. */
   const [notFound, setNotFound] = useState(false);
+  /* Payment travels with the order, so it is polled from the same row rather
+     than passed through the route -- a customer who paid an hour ago must see
+     the confirmation when they come back, not the state they navigated with. */
+  const [method, setMethod] = useState<PaymentMethod>('cod');
+  const [payStatus, setPayStatus] = useState<PaymentStatus>('pending');
+  const [orderTotal, setOrderTotal] = useState(0);
+  const settings = useStoreSettings();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const isCancelled = orderStatus === 'cancelled';
   const currentStep = statusToStep(orderStatus);
+  const awaitingPayment = isAwaitingPayment(method, payStatus);
 
   useEffect(() => {
     fetchOrderItems(orderId).then(setItems).catch(() => setItems([]));
@@ -70,6 +84,9 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
         const fresh = await fetchOrderById(orderId);
         if (fresh) {
           setOrderStatus(fresh.status);
+          setMethod(fresh.paymentMethod ?? 'cod');
+          setPayStatus(fresh.paymentStatus ?? 'pending');
+          setOrderTotal(fresh.total);
           setNotFound(false);
         } else {
           setNotFound(true);
@@ -205,6 +222,16 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
+        {/* Still owed. Shown here too because a customer who closed the app
+            after checkout has to be able to come back and pay. */}
+        {awaitingPayment && !isCancelled && settings.upiVpa.trim() ? (
+          <UpiPaymentPanel
+            orderId={orderId}
+            amount={orderTotal}
+            vpa={settings.upiVpa.trim()}
+          />
+        ) : null}
+
         {/* Step tracker. Hidden once cancelled: the order has left the
             sequence, and drawing it with step one lit under a Cancelled banner
             says the opposite of the banner. */}
@@ -299,9 +326,15 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
             <Text style={styles.metaValue}>#{formatOrderRef(orderId)}</Text>
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Status</Text>
+            <Text style={styles.metaLabel}>Order status</Text>
             <Text style={styles.metaValue}>
               {CUSTOMER_STATUS_LABEL[orderStatus]}
+            </Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Payment</Text>
+            <Text style={[styles.metaValue, awaitingPayment && styles.metaValueWarn]}>
+              {paymentLabel(method, payStatus)}
             </Text>
           </View>
         </View>
@@ -499,6 +532,7 @@ function createStyles(colors: ColorPalette) {
     metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     metaLabel: { fontSize: 13, color: colors.textMuted },
     metaValue: { fontSize: 13, fontWeight: '700', color: colors.text },
+    metaValueWarn: { color: colors.primaryDark },
 
     cancelBtn: {
       borderWidth: 1.5,
