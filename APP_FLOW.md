@@ -67,44 +67,51 @@ isLoading || !onboardingChecked || !signInPromptChecked
 its own orders, addresses and cart. The bridge ignores any phone the client
 attaches; trusting it was an account-takeover hole, now closed.
 
-### First-run profile
+### First-run name
 
 Signing in verifies a phone number and nothing else, so a brand-new account has
-no name anywhere. `handle_new_user` creates the `profiles` row from
-`raw_user_meta_data`, which the MSG91 path never sets — leaving `profiles.name`
-null, and that null is the signal.
+no name anywhere. Asked once, right after the first verified code — one field,
+the way Blinkit and its neighbours do it.
 
 ```
 first verified code
       ↓
-session exists, profiles.name is empty
+account created seconds ago, and profiles.name empty
       ↓
-CompleteProfile — name (required), email (optional)
+CompleteProfile — name only
       ↓
-saved to profiles
-      ↓
-the shop, and never asked again
+saved to profiles → the shop, never asked again
 ```
 
-Gated in `RootNavigator` rather than from `OtpScreen`, so it covers every way
-in: the greeting at first launch, the checkout gate, and a session restored
-mid-signup after a reload. While the answer is unknown the navigator renders
-nothing rather than flashing the shop and losing the question. It **fails
-open** — a profile that cannot be read is treated as complete, because a
-dropped request should cost a name, never the whole app. A guest is never
-asked; browsing stays public.
+**Two conditions, both required.** The account must be minutes old
+(`isFreshSignup`, a 5-minute window on `auth.users.created_at`), *and*
+`profiles.name` must still be empty. The bridge creates the auth row on first
+sign-in and reuses it on every later one, so an account that already existed
+carries an old `created_at` and fails the first test outright — however its
+profile looks. That is the point: an existing customer is never asked, even one
+who has no name recorded.
 
-The name is required because somebody has to be handed the box. The email is
-optional and says so, with its own "Skip the email" control — an optional field
-with no visible way past it is not optional. Nothing is sent by email today, so
-it is stored as a contact detail and nothing more.
+The direction of failure is chosen deliberately. Unknown or unparseable
+`created_at` counts as *not* new. Getting it wrong that way costs a name the
+customer can add from their account in a moment; getting it wrong the other way
+puts a form in front of someone who has been ordering for months.
 
-Both live in `profiles`, not in device storage. The name a customer typed at
-checkout used to survive only in that device's `localStorage`: gone on
-reinstall, invisible on a second device, and invisible to the bakery.
-`UserProfileContext` now reads the server row, with local edits taking
-precedence until the write-through lands. The email cannot go in
-`auth.users.email` — that holds the synthetic
+Gated in `RootNavigator` rather than from `OtpScreen`, so it survives a reload
+mid-signup. While the answer is unknown the navigator renders nothing rather
+than flashing the shop and losing the question. It also **fails open** — a
+profile that cannot be read is treated as complete. Guests are never asked;
+browsing stays public.
+
+**No email at sign-up.** Nothing is sent by email today, so asking for one at
+the door would be collecting an address for its own sake. It can be added any
+time from Account → Profile, which is where a detail nobody currently needs
+belongs.
+
+Both fields live in `profiles`. The name a customer typed at checkout used to
+survive only in that device's `localStorage`: gone on reinstall, invisible on a
+second device, invisible to the bakery. `UserProfileContext` reads the server
+row now, with local edits winning until the write-through lands. The email
+cannot go in `auth.users.email` — that holds the synthetic
 `<phone>@phone.lajwabbakery.local` address the OTP bridge needs for its
 magic-link exchange, so a real one there would collide with sign-in.
 

@@ -67,3 +67,24 @@ export async function saveMyProfile(patch: Partial<MyProfile>): Promise<void> {
   const { error } = await supabase.from('profiles').upsert(row, { onConflict: 'user_id' });
   if (error) throw error;
 }
+
+/* Was this account created by the code that was just verified?
+ *
+ * The bridge creates the auth user on first sign-in and reuses the row every
+ * time after, so an account that already existed carries an old created_at --
+ * there is no case where one reads as seconds old. That makes this safe in the
+ * direction that matters: it can never mistake a returning customer for a new
+ * one, which is the whole point of asking only at sign-up.
+ *
+ * Unknown or unparseable counts as NOT new. Getting it wrong the other way
+ * costs a name the customer can add from their account in a moment; getting it
+ * wrong this way puts a form in front of someone who has ordered for months.
+ */
+const NEW_ACCOUNT_WINDOW_MS = 5 * 60 * 1000;
+
+export function isFreshSignup(createdAt: string | undefined | null): boolean {
+  const created = Date.parse(createdAt ?? '');
+  if (!Number.isFinite(created)) return false;
+  const age = Date.now() - created;
+  return age >= 0 && age < NEW_ACCOUNT_WINDOW_MS;
+}

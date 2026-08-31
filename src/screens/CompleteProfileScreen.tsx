@@ -3,7 +3,6 @@ import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { FormInput } from '../components/FormInput';
 import { RootStackParamList } from '../navigation/types';
-import { isValidEmail, saveMyProfile } from '../services/profile';
+import { saveMyProfile } from '../services/profile';
 import { STORE } from '../data/store';
 import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
@@ -23,17 +22,15 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CompleteProfile'> & {
   onDone?: () => void;
 };
 
-/* Asked once, the first time an account exists.
+/* One field, asked once, right after the first verified code.
  *
- * Sign-in verifies a phone number and nothing else, so a brand-new customer had
- * no name anywhere -- checkout asked for one every time, and the bakery got an
- * order addressed to a phone number. This is the one moment where asking is
- * cheap: the account has just been created and nothing is waiting on it.
+ * Signing in proves a phone number and nothing else, so a brand-new customer
+ * had no name anywhere: checkout asked for one on every order, and the bakery
+ * got an order addressed to a number.
  *
- * The name is required because somebody has to be handed the box. The email is
- * not, and says so, because there is nothing the bakery currently sends by
- * email and pretending otherwise would be collecting an address for its own
- * sake.
+ * Deliberately just the name. An email is asked for nowhere at sign-up because
+ * nothing is sent by email today -- it can be added any time from the Account
+ * screen, which is where a detail nobody currently needs belongs.
  */
 export function CompleteProfileScreen({ onDone }: Props) {
   const { colors } = useTheme();
@@ -41,37 +38,29 @@ export function CompleteProfileScreen({ onDone }: Props) {
   const { updateProfile } = useUserProfile();
 
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const save = async (withEmail: boolean) => {
-    const trimmedName = name.trim();
-    if (!trimmedName) {
+  const save = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
       setNameError('Please tell us your name');
       return;
     }
-    if (trimmedName.length < 2) {
+    if (trimmed.length < 2) {
       setNameError('That looks too short — please enter your full name');
-      return;
-    }
-    const trimmedEmail = withEmail ? email.trim() : '';
-    if (trimmedEmail && !isValidEmail(trimmedEmail)) {
-      setEmailError("That doesn't look like an email address");
       return;
     }
 
     setNameError(null);
-    setEmailError(null);
     setFormError(null);
     setIsSaving(true);
     try {
-      await saveMyProfile({ name: trimmedName, email: trimmedEmail });
-      /* Mirrored into the context so the very next screen greets them by name
+      await saveMyProfile({ name: trimmed });
+      /* Mirrored into the context so the next screen greets them by name
          rather than waiting on a refetch. */
-      updateProfile({ name: trimmedName, ...(trimmedEmail ? { email: trimmedEmail } : {}) });
+      updateProfile({ name: trimmed });
       onDone?.();
     } catch (err) {
       setFormError(
@@ -94,10 +83,10 @@ export function CompleteProfileScreen({ onDone }: Props) {
             <View style={styles.logoMark}>
               <Text style={styles.logoEmoji}>🌿</Text>
             </View>
-            <Text style={styles.title}>Welcome to {STORE.name}</Text>
+            <Text style={styles.title}>What should we call you?</Text>
             <Text style={styles.subtitle}>
-              Your number is verified. Just one thing before you start —
-              who are we baking for?
+              Your number is verified. Just your name, so {STORE.name} knows who
+              the order is for.
             </Text>
           </View>
 
@@ -110,40 +99,14 @@ export function CompleteProfileScreen({ onDone }: Props) {
               onChangeText={(t) => { setName(t); setNameError(null); }}
               error={nameError ?? undefined}
             />
-            <Text style={styles.fieldHint}>
-              This is the name the bakery will see on your orders.
-            </Text>
-
-            <FormInput
-              label="Email (optional)"
-              placeholder="you@example.com"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={(t) => { setEmail(t); setEmailError(null); }}
-              error={emailError ?? undefined}
-            />
-            <Text style={styles.fieldHint}>
-              Only for order receipts. The bakery calls you about deliveries, so
-              you can leave this blank.
-            </Text>
 
             {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
-            <Button label="Continue" onPress={() => save(true)} loading={isSaving} />
+            <Button label="Continue" onPress={save} loading={isSaving} />
 
-            {/* The email is optional, and an optional field with no visible way
-                past it is not optional. This skips the email, never the name. */}
-            <Pressable
-              style={styles.skip}
-              onPress={() => save(false)}
-              disabled={isSaving}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Continue without adding an email"
-            >
-              <Text style={styles.skipText}>Skip the email</Text>
-            </Pressable>
+            <Text style={styles.footnote}>
+              You can change this any time from your account.
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -191,29 +154,18 @@ function createStyles(colors: ColorPalette) {
     form: {
       paddingHorizontal: spacing.xl,
       paddingBottom: spacing.xxl,
-      gap: spacing.sm,
-    },
-    fieldHint: {
-      fontSize: 12,
-      lineHeight: 17,
-      color: colors.textMuted,
-      marginTop: -spacing.xs,
-      marginBottom: spacing.sm,
+      gap: spacing.md,
     },
     formError: {
       color: colors.danger,
       fontSize: 13,
       textAlign: 'center',
-      marginBottom: spacing.xs,
     },
-    skip: {
-      alignItems: 'center',
-      paddingVertical: spacing.md,
-    },
-    skipText: {
-      fontSize: 14,
-      fontWeight: '700',
+    footnote: {
+      fontSize: 12,
+      lineHeight: 17,
       color: colors.textMuted,
+      textAlign: 'center',
     },
   });
 }

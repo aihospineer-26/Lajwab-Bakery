@@ -35,7 +35,7 @@ import { SearchScreen } from './src/screens/SearchScreen';
 import { TermsScreen } from './src/screens/TermsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchMyProfile } from './src/services/profile';
+import { fetchMyProfile, isFreshSignup } from './src/services/profile';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
 import { OffersScreen } from './src/screens/OffersScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
@@ -279,19 +279,23 @@ function RootNavigator() {
     });
   }, []);
 
-  /* Asked once, the first time an account exists.
+  /* Asked once, and only of an account that has just been created.
    *
-   * Gated here rather than from OtpScreen so it covers every way in -- the
-   * greeting at first launch, the checkout gate, a session restored mid-signup
-   * after a reload. `null` means "not asked yet"; the shop waits rather than
-   * flashing past the question and losing it.
+   * Two conditions, both required. The account must be minutes old -- the
+   * bridge reuses the auth row on every later sign-in, so a returning customer
+   * fails this outright however their profile looks. And the name must still be
+   * empty, so nothing is asked twice.
+   *
+   * Gated here rather than from OtpScreen so it survives a reload mid-signup.
+   * `null` means not yet known; the shop waits rather than flashing past the
+   * question and losing it.
    *
    * It fails open. A profile that cannot be read is treated as complete,
-   * because a dropped request must cost a name, never the whole app. */
+   * because a dropped request should cost a name, never the whole app. */
   const [needsProfile, setNeedsProfile] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
-    if (!session) {
+    if (!session || !isFreshSignup(session.user?.created_at)) {
       setNeedsProfile(false);
       return;
     }
