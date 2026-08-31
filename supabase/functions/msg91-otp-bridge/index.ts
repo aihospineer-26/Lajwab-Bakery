@@ -47,10 +47,31 @@ const VERIFY_URL = 'https://control.msg91.com/api/v5/widget/verifyAccessToken';
 
 type Msg91VerifyResponse = Record<string, unknown>;
 
-/* Every field MSG91 has been observed or documented to carry the verified
-   number in, checked at the top level and one level down. All of them come
-   from MSG91; none is client input. */
-const PHONE_FIELDS = ['identifier', 'mobile', 'phone', 'number', 'msisdn', 'contact'];
+/* Fields MSG91 has been observed or documented to carry the verified number in,
+   checked first. All of them come from MSG91; none is client input.
+
+   `message` is on the list because that is where MSG91 actually puts it. The
+   whole response is only ever {message, type, code} -- verified against the
+   live endpoint -- so on success the number has nowhere else to be. Leaving it
+   out is what refused a genuine sign-in: verifyAccessToken returned success,
+   nothing here matched, and the bridge failed closed on a real customer. */
+const PHONE_FIELDS = ['identifier', 'mobile', 'phone', 'number', 'msisdn', 'contact', 'message'];
+
+/* A phone number, not merely a string with ten digits in it.
+ *
+ * The old test was "strip non-digits, is it 10 long?", which a JWT passes
+ * easily -- and MSG91's message field can hold a token rather than a number.
+ * That would have minted a session for ten digits scraped out of base64.
+ * Require the whole value to be a dialable number: optional +, then digits with
+ * separators only, 10 to 15 digits in total (E.164's own ceiling). Letters
+ * anywhere -- a JWT, a sentence, an error -- fail. */
+function asPhone(value: unknown): string | null {
+  const raw = typeof value === 'number' ? String(value) : typeof value === 'string' ? value.trim() : '';
+  if (!raw) return null;
+  if (!/^\+?[0-9][0-9\s\-().]*$/.test(raw)) return null;
+  const digits = raw.replace(/[^0-9]/g, '');
+  return digits.length >= 10 && digits.length <= 15 ? raw : null;
+}
 
 function extractPhone(body: Msg91VerifyResponse): string | null {
   const containers: Record<string, unknown>[] = [body];
@@ -60,9 +81,17 @@ function extractPhone(body: Msg91VerifyResponse): string | null {
   }
   for (const container of containers) {
     for (const field of PHONE_FIELDS) {
-      const value = container[field];
-      if (typeof value === 'string' && value.replace(/[^0-9]/g, '').length >= 10) return value;
-      if (typeof value === 'number' && String(value).length >= 10) return String(value);
+      const hit = asPhone(container[field]);
+      if (hit) return hit;
+    }
+  }
+  /* Last resort: any value in the response that is unambiguously a phone
+     number. MSG91 renaming the field must not lock the bakery's customers out
+     again -- and asPhone is strict enough that nothing else can qualify. */
+  for (const container of containers) {
+    for (const value of Object.values(container)) {
+      const hit = asPhone(value);
+      if (hit) return hit;
     }
   }
   return null;
@@ -110,7 +139,14 @@ async function verifyMsg91Token(accessToken: string): Promise<string> {
         'PHONE_FIELDS and redeploy. Raw response:',
       raw.slice(0, 500),
     );
-    throw new Error('MSG91 did not report which number was verified');
+    /* The field names travel back with the error -- names only, never values.
+       Diagnosing this the first time meant reading the log by hand while the
+       customer sat on a burnt OTP; the next time it should be in the failure
+       itself. */
+    throw new Error(
+      'MSG91 did not report which number was verified (fields seen: ' +
+        Object.keys(body).join(', ') + ')',
+    );
   }
   return confirmedPhone;
 }

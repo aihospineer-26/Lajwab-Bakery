@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo } from 'react';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { PROFILE_STORAGE_KEY } from '../services/appTarget';
 import { formatMobile } from '../services/otp';
 import { useAuth } from './AuthContext';
 
@@ -43,7 +44,9 @@ const UserProfileContext = createContext<UserProfileContextValue | null>(null);
 
 export function UserProfileProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
-  const [overrides, setOverrides] = usePersistedState<Partial<UserProfile>>('user_profile', {});
+  /* Keyed per app — the shop and the dashboard must not share one name field.
+     See PROFILE_STORAGE_KEY in services/appTarget.ts. */
+  const [overrides, setOverrides] = usePersistedState<Partial<UserProfile>>(PROFILE_STORAGE_KEY, {});
 
   /* Derived rather than synced: the user's saved edits win over session values,
      but role always comes from server-set app_metadata and can never be forged.

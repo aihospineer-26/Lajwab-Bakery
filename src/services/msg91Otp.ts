@@ -280,6 +280,17 @@ function friendly(response: { message?: string; code?: string }, stage: 'send' |
   if (msg.includes('invalid otp') || msg.includes('incorrect')) {
     return 'That code is not right. Please check and try again.';
   }
+  /* MSG91 code 703, spelled "otp already verifed" in their own response. The
+     code was correct and MSG91 consumed it -- a second check can never pass.
+     It reached customers as the generic "could not check that code", which
+     invites them to retype the same dead code instead of asking for a new one.
+     Seen for real: the first attempt verified at MSG91 and then failed at the
+     bridge, so the customer was left retrying an OTP that was already spent. */
+  /* MSG91 sends code as a JSON number even though the widget types it a
+     string, so compare on the stringified value rather than on ===. */
+  if (String(response.code) === '703' || msg.includes('already verif')) {
+    return 'That code has already been used. Please ask for a new one.';
+  }
   if (msg.includes('expired')) return 'That code has expired. Please ask for a new one.';
   if (msg.includes('max') && msg.includes('attempt')) {
     return 'Too many attempts. Please try again later.';

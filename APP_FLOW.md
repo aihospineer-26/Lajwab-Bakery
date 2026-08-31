@@ -197,9 +197,15 @@ domain — `<username>@staff.lajwabbakery.local` — the same shape the phone
 accounts use. Staff never see an address. An input containing `@` is passed
 through unchanged, so older email logins still work.
 
-A customer session carries over to `/admin` on the same origin — same
-localStorage — which is why signing in as a customer and then visiting
-`/admin` lands on `AccessDenied` rather than on the login page.
+**The two apps keep separate sessions.** They share an origin
+(`localhost:3000` and `localhost:3000/admin`), and with one storage key they
+shared one session: signing into the dashboard also signed you into the shop as
+the bakery, and the staff account appeared on the customer Account screen
+carrying another customer's order history. `AUTH_STORAGE_KEY` in
+`src/services/appTarget.ts` now gives the shop `lajwab-customer-auth` and the
+dashboard `lajwab-staff-auth`. Staff sign-in never makes anyone a customer, the
+shop opens as a guest until a customer signs in, and a customer visiting
+`/admin` gets the sign-in screen rather than `AccessDenied`.
 
 ## 2.2 Tabs
 
@@ -254,6 +260,26 @@ a caller holding the service-role key:
 
 `USE_LOCAL_CATALOG` is `false`, so `products.ts` and `categories.ts` are a
 dormant offline fallback that nobody currently sees.
+
+---
+
+## 4a. Whose orders
+
+`orders_select` is `user_id = auth.uid() or is_staff()`, so RLS alone hands a
+staff account every order in the shop. That is right for the dashboard and
+wrong for the customer screens, which called the same function — a staff
+account browsing the shop saw other people's orders as "My Orders" and their
+spending as its own savings. The split is now explicit:
+
+| Function | Scope | Used by |
+| --- | --- | --- |
+| `fetchOrders` | `.eq('user_id', <caller>)` | customer Account, Orders, Savings |
+| `fetchOrderById` | `.eq('user_id', <caller>)` | customer OrderTracking |
+| `fetchAllOrders` | unscoped, RLS decides | dashboard order queue |
+| `fetchOrdersToday` | unscoped, RLS decides | dashboard stock screen |
+
+RLS decides what a caller *may* read; which of those rows are *theirs* is the
+query's question to answer.
 
 ---
 

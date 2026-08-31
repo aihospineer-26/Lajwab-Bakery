@@ -257,25 +257,38 @@ export async function cancelOrder(orderId: string): Promise<void> {
   }
 }
 
+/* The customer's own orders, and only ever their own.
+ *
+ * Scoped here rather than left to RLS, because the orders_select policy reads
+ * `user_id = auth.uid() or is_staff()` -- correct for the dashboard, wrong for
+ * this call. A staff account opening the shop's Account screen was shown every
+ * customer's order as "My Orders", with their spend counted as its own savings.
+ * RLS decides what a caller may read; which of those rows are *yours* is this
+ * function's question to answer. */
 export async function fetchOrders(): Promise<Order[]> {
   const { data: sessionData } = await supabase.auth.getSession();
-  if (!sessionData.session) {
+  const userId = sessionData.session?.user?.id;
+  if (!userId) {
     return readLocalOrders();
   }
 
   const { data, error } = await supabase
     .from('orders')
     .select(ORDER_COLUMNS)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
 
   return (data as OrderRow[]).map(mapOrderRow);
 }
 
+/* Customer-facing, so scoped to the caller for the same reason as fetchOrders:
+   the dashboard has fetchAllOrders for the unscoped view. */
 export async function fetchOrderById(orderId: string): Promise<Order | null> {
   const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user?.id;
 
-  if (!sessionData.session) {
+  if (!userId) {
     const existing = await readLocalOrders();
     return existing.find(o => o.id === orderId) ?? null;
   }
@@ -284,6 +297,7 @@ export async function fetchOrderById(orderId: string): Promise<Order | null> {
     .from('orders')
     .select(ORDER_COLUMNS)
     .eq('id', orderId)
+    .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
