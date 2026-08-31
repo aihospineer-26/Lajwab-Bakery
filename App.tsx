@@ -317,18 +317,57 @@ function RootNavigator() {
     AsyncStorage.setItem('signin_prompt_dismissed', '1');
   }, []);
 
-  /* A customer who signs in has answered the prompt; keep it from reappearing
-     if they later sign out and reopen. */
+  /* Signing in answers the prompt. Signing out asks it again.
+   *
+   * Skipping the prompt is remembered so a browsing customer is not greeted by
+   * a wall on every launch -- but an explicit sign-out is a different signal
+   * from having skipped once, and landing back on the Account screen as a
+   * nameless guest reads as the app having half-logged-you-out. Guest mode is
+   * still one tap away: this is the variant of the screen with Skip on it. */
+  const wasSignedIn = React.useRef(false);
+
   React.useEffect(() => {
-    if (session) dismissSignInPrompt();
+    if (session) {
+      wasSignedIn.current = true;
+      dismissSignInPrompt();
+      return;
+    }
+    if (wasSignedIn.current) {
+      wasSignedIn.current = false;
+      setShowSignInFirst(true);
+      AsyncStorage.removeItem('signin_prompt_dismissed');
+    }
   }, [session, dismissSignInPrompt]);
 
-  if (isLoading || !onboardingChecked || !signInPromptChecked || needsProfile === null) return null;
-
+  const ready = !isLoading && onboardingChecked && signInPromptChecked && needsProfile !== null;
   const promptSignIn = showSignInFirst && !session && !needsOnboarding && mode !== 'delivery';
 
+  /* Re-keying the navigator is not enough on its own: NavigationContainer
+     holds the root state and rehydrates a remounted navigator straight back
+     onto the route it was showing -- so a customer who signed out from the
+     Account tab stayed on the Account tab, signed out and nameless. This is
+     the explicit reset that actually moves them. */
+  React.useEffect(() => {
+    if (!ready || !promptSignIn || !navigationRef.isReady()) return;
+    const state = navigationRef.getRootState();
+    const current = state?.routes?.[state.index]?.name;
+    if (current === 'SignInPrompt') return;
+    navigationRef.resetRoot({ index: 0, routes: [{ name: 'SignInPrompt' }] });
+  }, [ready, promptSignIn]);
+
+  if (!ready) return null;
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    /* Keyed so the stack is rebuilt when the prompt appears or goes away.
+       Adding SignInPrompt in front of a stack already sitting on MainTabs does
+       not move anybody -- the old route still exists, so React Navigation
+       rightly stays put, and a customer who signed out kept looking at the
+       Account screen. Remounting is also the correct thing on sign-out: no
+       screen from the previous session should remain on the stack. */
+    <Stack.Navigator
+      key={promptSignIn ? 'signed-out' : 'app'}
+      screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+    >
       {needsOnboarding ? (
         <Stack.Screen name="Onboarding">
           {props => <OnboardingScreen {...props} onDone={() => setNeedsOnboarding(false)} />}

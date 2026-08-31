@@ -59,9 +59,14 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
      a customer typed at checkout was gone the moment they cleared the app. */
   const [server, setServer] = useState<MyProfile | null>(null);
 
+  /* signOut clears user_profile from storage, but usePersistedState keeps its
+     own copy in React state and nothing tells it to re-read -- so the name of
+     the person who just signed out stayed on the Account screen until a full
+     reload. Clearing both here is what actually ends the session on screen. */
   useEffect(() => {
     if (!session) {
       setServer(null);
+      setOverrides(prev => (Object.keys(prev).length === 0 ? prev : {}));
       return;
     }
     let alive = true;
@@ -79,6 +84,10 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
      displayName. */
   const profile = useMemo<UserProfile>(() => {
     const user = session?.user;
+    /* Signed out is signed out. Derived rather than left to the cleanup above,
+       so a failed write or a slow effect can never show one customer their
+       predecessor's name on a shared handset. */
+    if (!user) return { name: '', email: '', phone: '', role: 'customer' };
     return {
       /* Local edits win while they are still being written back, then the
          two agree. user_metadata is the last resort -- it is only ever set
