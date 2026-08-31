@@ -3,6 +3,7 @@ import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native
 import { useCart } from '../state/CartContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { resolveImage } from '../data/productImages';
 import { ProductWithStock } from '../services/catalog';
 import { Card } from './Card';
 
@@ -11,6 +12,11 @@ export function CartLineItem({ product }: { product: ProductWithStock }) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const quantity = getQuantity(product.id);
+  /* products.image is an emoji, not a URL, so <Image source={{uri}}> could
+     never load it -- the cart drew an empty tile for every line. Same
+     resolver the product cards use: the bundled photo when there is one, the
+     emoji as text when there is not. */
+  const photo = resolveImage(product.id, product.image);
   const isAtStockLimit = quantity >= product.stock;
 
   const qtyScale = useRef(new Animated.Value(1)).current;
@@ -29,7 +35,11 @@ export function CartLineItem({ product }: { product: ProductWithStock }) {
   return (
     <Card style={styles.card}>
       <View style={styles.imageArea}>
-        <Image source={{ uri: product.image }} style={styles.image} resizeMode="contain" />
+        {photo ? (
+          <Image source={photo} style={styles.image} resizeMode="cover" />
+        ) : (
+          <Text style={styles.emoji}>{product.image}</Text>
+        )}
       </View>
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={2}>
@@ -76,9 +86,14 @@ function createStyles(colors: ColorPalette) {
       justifyContent: 'center',
       flexShrink: 0,
     },
+    emoji: {
+      fontSize: 30,
+      textAlign: 'center',
+    },
     image: {
-      width: '85%',
-      height: '85%',
+      /* Fills the rounded tile, matching the product cards. */
+      width: '100%',
+      height: '100%',
     },
     info: {
       flex: 1,
