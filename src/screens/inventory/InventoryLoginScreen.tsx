@@ -8,7 +8,21 @@ import { useAuth } from '../../state/AuthContext';
 import { useTheme } from '../../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../../theme';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/* Supabase Auth is keyed on email, but the bakery was given a username. The
+   username becomes the local part of a fixed internal domain -- the same shape
+   the phone accounts already use (<phone>@phone.lajwabbakery.local) -- so staff
+   type "Lajwab-bakery2026" and never see an address. Anything containing an @
+   is passed through untouched, which keeps the older staff@lajwabbakery.com
+   account working without a second field on the form. */
+export const STAFF_EMAIL_DOMAIN = '@staff.lajwabbakery.local';
+
+const USERNAME_REGEX = /^[A-Za-z0-9._-]+$/;
+
+export function toStaffEmail(identifier: string): string {
+  const trimmed = identifier.trim();
+  if (trimmed.includes('@')) return trimmed.toLowerCase();
+  return trimmed.toLowerCase() + STAFF_EMAIL_DOMAIN;
+}
 
 /* Staff sign in with a password, not the customer phone OTP. Two reasons: the
    owner is not left waiting on WhatsApp template approval to reach his own
@@ -20,30 +34,41 @@ export function InventoryLoginScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { signInWithPassword } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleSignIn = async () => {
-    const trimmed = email.trim();
+    const trimmed = username.trim();
     let bad = false;
 
-    if (!trimmed) { setEmailError('Enter your email'); bad = true; }
-    else if (!EMAIL_REGEX.test(trimmed)) { setEmailError('Enter a valid email address'); bad = true; }
+    if (!trimmed) { setUsernameError('Enter your username'); bad = true; }
+    else if (!trimmed.includes('@') && !USERNAME_REGEX.test(trimmed)) {
+      setUsernameError('Letters, numbers, dots and dashes only');
+      bad = true;
+    }
     if (!password) { setPasswordError('Enter your password'); bad = true; }
     if (bad) return;
 
-    setEmailError(null);
+    setUsernameError(null);
     setPasswordError(null);
     setFormError(null);
     setIsSigningIn(true);
-    const error = await signInWithPassword(trimmed, password);
+    const error = await signInWithPassword(toStaffEmail(trimmed), password);
     setIsSigningIn(false);
     /* On success the session lands and AppInventory swaps this screen out. */
-    if (error) setFormError(error);
+    if (error) {
+      /* Supabase says "Invalid login credentials" and names the email it tried,
+         which is an address the bakery never typed and would only confuse. */
+      setFormError(
+        /invalid login|credentials/i.test(error)
+          ? 'That username and password did not match. Check both and try again.'
+          : error,
+      );
+    }
   };
 
   return (
@@ -66,13 +91,12 @@ export function InventoryLoginScreen() {
 
           <View style={styles.form}>
             <FormInput
-              label="Email"
-              placeholder="owner@lajwabbakery.in"
-              keyboardType="email-address"
+              label="Username"
+              placeholder="Lajwab-bakery2026"
               autoCapitalize="none"
-              value={email}
-              onChangeText={(t) => { setEmail(t); setEmailError(null); setFormError(null); }}
-              error={emailError ?? undefined}
+              value={username}
+              onChangeText={(t) => { setUsername(t); setUsernameError(null); setFormError(null); }}
+              error={usernameError ?? undefined}
             />
 
             <FormInput
@@ -91,7 +115,7 @@ export function InventoryLoginScreen() {
           </View>
 
           <Text style={styles.footnote}>
-            Lost your password? Ask the bakery to reset it from the Supabase dashboard.
+            Lost your password? It can be reset from the Supabase dashboard.
           </Text>
         </View>
       </KeyboardAvoidingView>

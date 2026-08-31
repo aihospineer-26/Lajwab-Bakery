@@ -12,8 +12,10 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Faq'>;
 
 const faqs = [
   { q: 'How fast is delivery?', a: "Most orders reach you the same day. Cakes and the 56 Bhog Thaali need a day of notice so they are baked fresh." },
-  { q: 'What payment methods are supported?', a: 'Cash on delivery for now. UPI and card payments are coming soon.' },
-  { q: 'Can I cancel an order?', a: 'Yes — you can cancel any time before the bakery starts packing it.' },
+  /* No date was ever set for UPI or cards and no gateway is integrated, so
+     "coming soon" was a promise nobody had made. */
+  { q: 'What payment methods are supported?', a: 'Cash on delivery only. You pay the delivery person when your order arrives.' },
+  { q: 'Can I cancel an order?', a: 'Yes — free of charge, until the bakery starts preparing it. After that, call us and we will do what we can.' },
   { q: 'Is everything eggless?', a: 'Yes. Every item we bake is 100% eggless and pure vegetarian.' },
 ];
 

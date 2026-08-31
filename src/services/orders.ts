@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DeliveryAddress,
   isCancellable,
-  MOCK_ORDERS,
   normalizeStatus,
   Order,
   OrderItem,
@@ -127,11 +126,10 @@ async function readJson<T>(key: string, fallback: T): Promise<T> {
    the same call sites work either side of sign-in. */
 async function readLocalOrders(): Promise<Order[]> {
   const orders = await readJson<Order[] | null>(LOCAL_ORDERS_KEY, null);
-  /* Sample orders are a development convenience only. Anonymous sign-in is
-     turned off on the project, so a signed-out customer reaches this path for
-     real -- and used to be shown a history of orders they had never placed.
-     Signed out and nothing stored means no orders, which is the truth. */
-  if (!orders) return __DEV__ ? MOCK_ORDERS : [];
+  /* Signed out and nothing stored means no orders, which is the truth.
+     Sample orders used to fill this in on the dev server, showing a
+     history the customer had never placed. */
+  if (!orders) return [];
   // Normalized on read so orders stored before the status migration still work
   return orders.map(o => ({ ...o, status: normalizeStatus(o.status) }));
 }

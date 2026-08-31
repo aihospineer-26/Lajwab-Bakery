@@ -1,20 +1,16 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
-import { StarRating } from '../components/StarRating';
 import { resolveImage } from '../data/productImages';
-import { MOCK_REVIEWS, Review } from '../data/reviews';
-import { usePersistedState } from '../hooks/usePersistedState';
 import { RootStackParamList } from '../navigation/types';
 import { useCart } from '../state/CartContext';
 import { useCatalog } from '../state/CatalogContext';
 import { dayLabel, leadTimeForProduct, leadTimeLabel } from '../data/preOrder';
 import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
-import { useUserProfile } from '../state/UserProfileContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetail'>;
@@ -25,53 +21,8 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const leadDays = leadTimeForProduct(route.params.productId);
   const { getQuantity, increment, decrement } = useCart();
   const { colors, typography } = useTheme();
-  const { profile } = useUserProfile();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  /* One review per product per user; stored globally and filtered by productId */
-  const [myReviews, setMyReviews] = usePersistedState<Review[]>('my_reviews', []);
-  const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
-  const [draftRating, setDraftRating] = useState(0);
-  const [draftComment, setDraftComment] = useState('');
-
-  const myReview = useMemo(
-    () => myReviews.find(r => r.productId === product?.id),
-    [myReviews, product?.id],
-  );
-  const productReviews = useMemo(() => {
-    const others = MOCK_REVIEWS.filter(r => r.productId === product?.id);
-    return myReview ? [myReview, ...others] : others;
-  }, [myReview, product?.id]);
-  const reviewCount = productReviews.length;
-  const avgRating = reviewCount > 0
-    ? productReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
-    : 0;
-
-  const openReviewForm = () => {
-    setDraftRating(myReview?.rating ?? 0);
-    setDraftComment(myReview?.comment ?? '');
-    setIsReviewFormOpen(true);
-  };
-
-  const submitReview = () => {
-    if (draftRating === 0 || !product) return;
-    const newReview: Review = {
-      id: myReview?.id ?? `my-${product.id}-${Date.now()}`,
-      productId: product.id,
-      author: profile.name.trim() || 'You',
-      rating: draftRating,
-      comment: draftComment.trim(),
-      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-    };
-    setMyReviews(prev => [newReview, ...prev.filter(r => r.productId !== product.id)]);
-    setIsReviewFormOpen(false);
-  };
-
-  const deleteMyReview = () => {
-    if (!product) return;
-    setMyReviews(prev => prev.filter(r => r.productId !== product.id));
-    setIsReviewFormOpen(false);
-  };
 
   /* ── Animation refs (unconditional — before any early return) ── */
   const headerOpacity = useRef(new Animated.Value(0)).current;
@@ -171,14 +122,6 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           <Text style={typography.heading}>{product.name}</Text>
           <View style={styles.unitRow}>
             <Text style={typography.caption}>{product.unit}</Text>
-            {reviewCount > 0 ? (
-              <View style={styles.ratingSummary}>
-                <StarRating rating={avgRating} size={12} />
-                <Text style={styles.ratingSummaryText}>
-                  {avgRating.toFixed(1)} ({reviewCount})
-                </Text>
-              </View>
-            ) : null}
           </View>
 
           <View style={styles.priceRow}>
@@ -231,69 +174,10 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             </View>
           ) : null}
 
-          {/* Ratings & Reviews */}
-          <View style={styles.reviewsSection}>
-            <Text style={styles.descTitle}>Ratings & Reviews</Text>
-
-            {!isReviewFormOpen ? (
-              <Pressable style={styles.reviewCta} onPress={openReviewForm}>
-                <Text style={styles.reviewCtaText}>
-                  {myReview ? '✏️  Edit your review' : '⭐  Write a review'}
-                </Text>
-              </Pressable>
-            ) : (
-              <View style={styles.reviewForm}>
-                <StarRating rating={draftRating} size={26} onChange={setDraftRating} />
-                <TextInput
-                  style={styles.reviewInput}
-                  placeholder="Share your experience with this product..."
-                  placeholderTextColor={colors.textMuted}
-                  value={draftComment}
-                  onChangeText={setDraftComment}
-                  multiline
-                  numberOfLines={3}
-                />
-                <View style={styles.reviewFormActions}>
-                  <Pressable
-                    style={[styles.reviewSubmitBtn, draftRating === 0 && styles.reviewSubmitBtnDisabled]}
-                    onPress={submitReview}
-                    disabled={draftRating === 0}
-                  >
-                    <Text style={styles.reviewSubmitText}>
-                      {myReview ? 'Update Review' : 'Submit Review'}
-                    </Text>
-                  </Pressable>
-                  <Pressable style={styles.reviewCancelBtn} onPress={() => setIsReviewFormOpen(false)}>
-                    <Text style={styles.reviewCancelText}>Cancel</Text>
-                  </Pressable>
-                </View>
-                {myReview ? (
-                  <Pressable onPress={deleteMyReview} hitSlop={8}>
-                    <Text style={styles.reviewDeleteText}>Delete my review</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            )}
-
-            {productReviews.length === 0 ? (
-              <Text style={styles.noReviewsText}>No reviews yet. Be the first to share your thoughts!</Text>
-            ) : (
-              <View style={styles.reviewList}>
-                {productReviews.map(r => (
-                  <View key={r.id} style={styles.reviewCard}>
-                    <View style={styles.reviewCardTop}>
-                      <Text style={styles.reviewAuthor}>
-                        {r.author}{r.id === myReview?.id ? ' (You)' : ''}
-                      </Text>
-                      <Text style={styles.reviewDate}>{r.date}</Text>
-                    </View>
-                    <StarRating rating={r.rating} size={12} />
-                    {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
+          {/* Ratings & Reviews removed for launch. A review written here was
+              stored under my_reviews on that one device and reached no server,
+              so it was never seen by another customer -- a review nobody can
+              read is not a review. Restore this when reviews have a table. */}
         </Animated.View>
       </ScrollView>
 

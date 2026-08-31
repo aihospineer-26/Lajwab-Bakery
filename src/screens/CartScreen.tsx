@@ -18,6 +18,7 @@ import { Card } from '../components/Card';
 import { CartLineItem } from '../components/CartLineItem';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { ProductWithStock } from '../services/catalog';
+import { useAuth } from '../state/AuthContext';
 import { DELIVERY_FEE, FREE_DELIVERY_THRESHOLD, useCart } from '../state/CartContext';
 import { useCatalog } from '../state/CatalogContext';
 import { useLocation } from '../state/LocationContext';
@@ -96,6 +97,7 @@ export function CartScreen({ navigation }: Props) {
   } = useCart();
   const { products } = useCatalog();
   const { address } = useLocation();
+  const { session } = useAuth();
   const { colors, typography } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   /* Memoized so the reference only changes when the cart actually changes —
@@ -166,7 +168,12 @@ export function CartScreen({ navigation }: Props) {
   }, []);
 
   const handlePlaceOrder = () => {
-    if (!hasAddress) {
+    /* A guest has no saved address and cannot create one: addresses are scoped
+       to auth.uid() by RLS, so the address screen would refuse to save and the
+       funnel would dead-end on a demand the customer has no way to meet. Let
+       them through -- Checkout is where sign-in is asked for, and it explains
+       why. The address check still applies once they have an account. */
+    if (session && !hasAddress) {
       setOrderError('Please add a delivery address before placing an order.');
       return;
     }

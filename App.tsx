@@ -26,7 +26,6 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { OrderConfirmationScreen } from './src/screens/OrderConfirmationScreen';
 import { OrdersScreen } from './src/screens/OrdersScreen';
-import { PaymentsScreen } from './src/screens/PaymentsScreen';
 import { PrivacyPolicyScreen } from './src/screens/PrivacyPolicyScreen';
 import { ProductDetailScreen } from './src/screens/ProductDetailScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
@@ -36,11 +35,9 @@ import { TermsScreen } from './src/screens/TermsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
-import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { OffersScreen } from './src/screens/OffersScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { OrderTrackingScreen } from './src/screens/OrderTrackingScreen';
-import { WalletScreen } from './src/screens/WalletScreen';
 import { DeliveryAccountScreen } from './src/screens/delivery/DeliveryAccountScreen';
 import { DeliveryEarningsScreen } from './src/screens/delivery/DeliveryEarningsScreen';
 import { DeliveryOrdersScreen } from './src/screens/delivery/DeliveryOrdersScreen';
@@ -328,12 +325,9 @@ function RootNavigator() {
           <Stack.Screen name="Faq" component={FaqScreen} />
           <Stack.Screen name="Orders" component={OrdersScreen} />
           <Stack.Screen name="Addresses" component={AddressesScreen} />
-          <Stack.Screen name="Payments" component={PaymentsScreen} />
           <Stack.Screen name="SavingsReport" component={SavingsReportScreen} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           <Stack.Screen name="Terms" component={TermsScreen} />
-          <Stack.Screen name="Notifications" component={NotificationsScreen} />
-          <Stack.Screen name="Wallet" component={WalletScreen} />
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         </>
       )}

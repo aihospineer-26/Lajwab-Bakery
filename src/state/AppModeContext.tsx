@@ -12,16 +12,30 @@ type AppModeContextValue = {
 
 const AppModeContext = createContext<AppModeContextValue | null>(null);
 
+/* Rider mode is off until a rider backend exists.
+ *
+ * The three delivery screens read src/data/deliveries.ts -- invented jobs and
+ * invented earnings. Nothing assigns a real job, nothing pays a real rider, and
+ * a delivery-role account reaching those screens would be shown operational
+ * data that is not true. The screens and their code are kept intact so they can
+ * be reconnected; this flag is the single intentional gate that turns them back
+ * on, and it must stay off until the data behind them is real.
+ *
+ * Set EXPO_PUBLIC_ENABLE_RIDER=1 in a .env file to develop against them. */
+export const RIDER_MODE_ENABLED = process.env.EXPO_PUBLIC_ENABLE_RIDER === '1';
+
 export function AppModeProvider({ children }: { children: React.ReactNode }) {
   const { profile } = useUserProfile();
   const { session } = useAuth();
   const [mode, setModeState] = useState<AppMode>('customer');
 
-  /* Role rides on the session, so preview mode has none — open the staff views
-     on the dev server only. A real session is always role-gated. */
+  /* Role alone is not enough. Without the feature flag nobody reaches the rider
+     view -- not a delivery account, not an admin, not the signed-out dev
+     preview -- because there is nothing truthful there to reach. */
   const isDevPreview = __DEV__ && !session;
   const canAccessDelivery =
-    isDevPreview || profile.role === 'delivery' || profile.role === 'admin';
+    RIDER_MODE_ENABLED &&
+    (isDevPreview || profile.role === 'delivery' || profile.role === 'admin');
 
   /* Riders land straight in the rider view instead of having to find the header
      toggle. Keyed by user id so it routes once per sign-in and does not fight
@@ -31,7 +45,8 @@ export function AppModeProvider({ children }: { children: React.ReactNode }) {
     const userId = session?.user?.id ?? null;
     if (routedForUser.current === userId) return;
     routedForUser.current = userId;
-    setModeState(profile.role === 'delivery' ? 'delivery' : 'customer');
+    const isRider = RIDER_MODE_ENABLED && profile.role === 'delivery';
+    setModeState(isRider ? 'delivery' : 'customer');
   }, [session, profile.role]);
 
   /* Losing access while parked in the rider view would otherwise strand the

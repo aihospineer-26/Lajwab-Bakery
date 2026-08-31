@@ -55,9 +55,12 @@ export const STORE_ADDRESS_LINE = `${STORE.area}, ${STORE.city} ${STORE.pincode}
 /* ------------------------------------------------------------------
    BEFORE LAUNCH
    ------------------------------------------------------------------
-   [ ] phone     — the number customers should call
-   [ ] whatsapp  — usually the same number
-   [ ] email     — leave empty if the bakery has none; the option hides
-   [ ] fssai     — licence number, mandatory to display
-   [ ] gstin     — only if registered
+   [ ] phone       — the number customers should call
+   [ ] whatsapp    — usually the same number
+   [ ] email       — leave empty if the bakery has none; the option hides
+   [ ] fssai       — licence number, mandatory to display
+   [ ] gstin       — only if registered
+   [ ] deliveryEta — the window quoted on every express order. Nobody has
+                     confirmed 45–60 minutes with the bakery; it is the app
+                     making a delivery promise on their behalf.
    ------------------------------------------------------------------ */

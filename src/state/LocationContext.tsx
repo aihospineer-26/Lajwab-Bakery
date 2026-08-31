@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Address, MOCK_ADDRESSES } from '../data/addresses';
+import { Address } from '../data/addresses';
 import { deleteAddress, fetchAddresses, saveAddress, setDefaultAddress } from '../services/addresses';
 import { useAuth } from './AuthContext';
 
@@ -34,13 +34,10 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!session) {
-      /* Sample addresses are for developing against, not for customers.
-         Anonymous sign-in is disabled on the project, so signed-out customers
-         land here for real and were being shown three saved addresses that
-         belong to nobody -- including someone's "Parents' Place". */
-      const seed = __DEV__ ? MOCK_ADDRESSES : [];
-      setAddresses(seed);
-      setSelected(prev => prev ?? seed.find(a => a.isDefault) ?? seed[0] ?? null);
+      /* Signed out means no saved addresses, on the dev server too. The three
+         seeded ones belonged to nobody and read as the customer's own. */
+      setAddresses([]);
+      setSelected(null);
       setIsLoading(false);
       return;
     }

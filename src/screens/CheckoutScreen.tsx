@@ -23,6 +23,7 @@ import { dayLabel, leadTimeForCart, leadTimeLabel } from '../data/preOrder';
 import { validatePincode } from '../data/serviceability';
 import { digitsOnly, formatMobile, isValidMobile } from '../services/otp';
 import { useAuth } from '../state/AuthContext';
+import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
@@ -48,16 +49,18 @@ type PaymentOption = {
   label: string;
   sub: string;
   icon: string;
-  /* Shown but not selectable until Razorpay is wired up. Kept visible rather
-     than deleted so the customer can see online payment is coming, and so the
-     rows are already in place when it lands. */
   comingSoon?: boolean;
 };
 
+/* Cash on delivery, because that is what the bakery actually accepts.
+ *
+ * Greyed "UPI — SOON" and "Credit / Debit Card — SOON" rows sat under this one.
+ * No gateway is integrated and no date was ever set, so the badge was promising
+ * a roadmap on the bakery's behalf that nobody had agreed to -- and the FAQ now
+ * says cash only, which the rows contradicted. Add them back the day a gateway
+ * is live, not before. */
 const PAYMENT_METHODS: PaymentOption[] = [
   { id: 'cod', label: 'Cash on Delivery', sub: 'Pay when your order arrives', icon: '💵' },
-  { id: 'upi', label: 'UPI', sub: 'GPay, PhonePe, Paytm', icon: '📲', comingSoon: true },
-  { id: 'card', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, RuPay', icon: '💳', comingSoon: true },
 ];
 
 export function CheckoutScreen({ navigation }: Props) {
@@ -104,6 +107,7 @@ export function CheckoutScreen({ navigation }: Props) {
      at all once the request has left the device. */
   const requestIdRef = useRef<string | null>(null);
 
+  const { profile, updateProfile } = useUserProfile();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
 
@@ -115,9 +119,17 @@ export function CheckoutScreen({ navigation }: Props) {
     if (verified) setCustomerPhone(digitsOnly(verified).slice(-10));
   }, [session]);
 
-  /* The name is not part of signing in, so it is still asked for once and
-     remembered on the device for next time. */
+  /* The name is not part of signing in, so it is asked for once and then reused.
+     The profile is the better source of the two -- it is what the customer sees
+     under their own name on the Account screen -- so it wins, and the older
+     checkout-only copy is the fallback for anyone who filled that in first.
+     Either way nobody should have to type their name at every order. */
   useEffect(() => {
+    const fromProfile = profile.name.trim();
+    if (fromProfile) {
+      setCustomerName(fromProfile);
+      return;
+    }
     AsyncStorage.getItem(CONTACT_KEY).then((raw) => {
       if (!raw) return;
       try {
@@ -127,7 +139,7 @@ export function CheckoutScreen({ navigation }: Props) {
         /* corrupt entry, not worth surfacing -- the field just starts empty */
       }
     });
-  }, []);
+  }, [profile.name]);
 
   const cartProducts = products.filter(p => (quantities[p.id] ?? 0) > 0);
 
@@ -192,6 +204,11 @@ export function CheckoutScreen({ navigation }: Props) {
         discount,
       });
       requestIdRef.current = null;
+      /* Written back so the Account screen greets them by the name they just
+         gave, and the next order arrives with the field already filled. */
+      if (customerName.trim() !== profile.name.trim()) {
+        updateProfile({ name: customerName.trim() });
+      }
       await AsyncStorage.setItem(CONTACT_KEY, JSON.stringify({ name: customerName.trim() }));
       await refetchProducts();
       clearCart();
@@ -208,6 +225,23 @@ export function CheckoutScreen({ navigation }: Props) {
       <AppHeader title="Checkout" onBack={() => navigation.goBack()} />
       <ScreenContainer>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* Browsing is public; ordering is not. Say so here rather than letting
+            the Place Order button bounce to a login screen with no explanation,
+            and promise the cart explicitly -- the fear that stops people signing
+            in mid-checkout is losing the basket they just filled. */}
+        {!session ? (
+          <View style={styles.signInNotice}>
+            <Text style={styles.signInNoticeTitle}>Sign in to place this order</Text>
+            <Text style={styles.signInNoticeBody}>
+              We verify your mobile number so the bakery can call you about your
+              delivery. Your cart is saved — you'll come straight back here.
+            </Text>
+            <Pressable style={styles.signInNoticeBtn} onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.signInNoticeBtnText}>Sign in</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* Delivery address */}
         <View style={styles.section}>
@@ -461,6 +495,26 @@ function createStyles(colors: ColorPalette) {
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
+    signInNotice: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.lg,
+      marginBottom: spacing.lg,
+      gap: spacing.xs,
+    },
+    signInNoticeTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
+    signInNoticeBody: { fontSize: 12.5, lineHeight: 19, color: colors.textMuted },
+    signInNoticeBtn: {
+      marginTop: spacing.sm,
+      alignSelf: 'flex-start',
+      backgroundColor: colors.primary,
+      borderRadius: radius.full,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.xl,
+    },
+    signInNoticeBtnText: { color: colors.textOnPrimary, fontWeight: '700', fontSize: 13 },
     leadNotice: {
       backgroundColor: colors.surfaceMuted,
       borderRadius: radius.md,

@@ -25,19 +25,28 @@ import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrderTracking'>;
 
-const STEPS = [
-  { id: 'confirmed', label: 'Order Confirmed', sub: 'We received your order', icon: '✅' },
-  { id: 'picking', label: 'Picking Fresh Items', sub: 'Handpicking the freshest for you', icon: '🥬' },
-  { id: 'delivery', label: 'Out for Delivery', sub: 'Your rider is on the way!', icon: '🛵' },
+/* One step per real status, in the order the trigger allows.
+ *
+ * There used to be four steps for five statuses: 'accepted' and 'packed' shared
+ * "Picking Fresh Items", so a customer watching the tracker could not tell that
+ * the bakery had started baking, and the copy described a grocery picker and a
+ * rider on the way -- neither of which exists here. Keeping this list aligned
+ * with the enum means the screen can never show a stage the backend cannot be
+ * in. Labels are for people; the ids stay the database's. */
+const STEPS: { id: OrderStatus; label: string; sub: string; icon: string }[] = [
+  { id: 'placed', label: 'Order placed', sub: 'We have your order', icon: '📝' },
+  { id: 'accepted', label: 'Bakery accepted', sub: 'The bakery confirmed it', icon: '✅' },
+  { id: 'packed', label: 'Preparing your order', sub: 'Baking and boxing it up', icon: '🧁' },
+  { id: 'out_for_delivery', label: 'Out for delivery', sub: 'On its way to you', icon: '🛵' },
   { id: 'delivered', label: 'Delivered', sub: 'Enjoy your order!', icon: '🏠' },
 ];
 
 const STATUS_TO_STEP: Record<OrderStatus, number> = {
   placed: 0,
   accepted: 1,
-  packed: 1,
-  out_for_delivery: 2,
-  delivered: 3,
+  packed: 2,
+  out_for_delivery: 3,
+  delivered: 4,
   cancelled: 0,
 };
 
@@ -305,21 +314,35 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Cancel action */}
+        {/* Cancel action.
+            The window closes once the bakery starts baking, and the button
+            simply vanishing at that moment reads as a bug -- or worse, as the
+            app quietly taking the option away. Say which state they are in
+            either way. */}
         {cancelError ? <Text style={styles.cancelError}>{cancelError}</Text> : null}
         {canCancel ? (
-          <Pressable
-            style={[styles.cancelBtn, isCancelling && styles.cancelBtnDisabled]}
-            onPress={handleCancel}
-            disabled={isCancelling}
-          >
-            {isCancelling ? (
-              <ActivityIndicator color="#DC2626" size="small" />
-            ) : (
-              <Text style={styles.cancelBtnText}>Cancel Order</Text>
-            )}
-          </Pressable>
-        ) : null}
+          <>
+            <Text style={styles.cancelNote}>
+              You can cancel free of charge until the bakery starts preparing your order.
+            </Text>
+            <Pressable
+              style={[styles.cancelBtn, isCancelling && styles.cancelBtnDisabled]}
+              onPress={handleCancel}
+              disabled={isCancelling}
+            >
+              {isCancelling ? (
+                <ActivityIndicator color="#DC2626" size="small" />
+              ) : (
+                <Text style={styles.cancelBtnText}>Cancel Order</Text>
+              )}
+            </Pressable>
+          </>
+        ) : isCancelled || isDelivered ? null : (
+          <Text style={styles.cancelNote}>
+            This order can no longer be cancelled — preparation has already started.
+            Call the bakery on {STORE.phone} if something is wrong.
+          </Text>
+        )}
 
       </ScrollView>
       </ScreenContainer>
@@ -486,5 +509,13 @@ function createStyles(colors: ColorPalette) {
     cancelBtnDisabled: { opacity: 0.6 },
     cancelBtnText: { fontSize: 14, fontWeight: '700', color: colors.danger },
     cancelError: { fontSize: 13, color: colors.danger, textAlign: 'center' },
+    cancelNote: {
+      fontSize: 12.5,
+      lineHeight: 19,
+      color: colors.textMuted,
+      textAlign: 'center',
+      paddingHorizontal: spacing.lg,
+      marginTop: spacing.sm,
+    },
   });
 }

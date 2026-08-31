@@ -144,11 +144,13 @@ function accessDeniedStyles(colors: ReturnType<typeof useTheme>['colors']) {
   });
 }
 
-// Skips login while running the dev server so the dashboard can be previewed
-// directly. Tied to __DEV__ so a real deployment always enforces login.
-/* Dev builds skip the login wall so every screen stays reachable. Set
-   EXPO_PUBLIC_SHOW_AUTH=1 to exercise the real OTP flow while developing. */
-const SKIP_AUTH_FOR_PREVIEW = __DEV__ && process.env.EXPO_PUBLIC_SHOW_AUTH !== '1';
+/* The dashboard has no guest mode, on any build.
+ *
+ * A dev-server preview used to open the whole dashboard with no login at all,
+ * and a signed-out visitor counted as an admin so every screen stayed
+ * browsable. It was convenient and it was indefensible: the one surface that
+ * moves real orders and real stock was the one surface you could reach without
+ * a password. Sign in, or see the sign-in screen. */
 
 function RootNavigator() {
   const { session, isLoading } = useAuth();
@@ -156,14 +158,11 @@ function RootNavigator() {
 
   if (isLoading) return null;
 
-  /* Role rides on the session, so preview mode has none — open the dashboard
-     on the dev server only. A real session is always role-gated. */
-  const isDevPreview = __DEV__ && !session;
-  const isAdmin = isDevPreview || profile.role === 'admin';
+  const isAdmin = profile.role === 'admin';
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-      {!session && !SKIP_AUTH_FOR_PREVIEW ? (
+      {!session ? (
         <Stack.Screen name="InventoryLogin" component={InventoryLoginScreen} />
       ) : isAdmin ? (
         <Stack.Screen name="InventoryTabs" component={InventoryTabs} />

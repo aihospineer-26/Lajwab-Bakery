@@ -88,10 +88,3 @@ const CANCELLABLE: OrderStatus[] = ['placed', 'accepted'];
 export function isCancellable(status: OrderStatus): boolean {
   return CANCELLABLE.includes(status);
 }
-
-/* Seeds order history while signed out so Orders isn't empty during preview. */
-export const MOCK_ORDERS: Order[] = [
-  { id: 'ORD1042', date: '20 Jun 2026', itemCount: 5, total: 312, status: 'delivered', createdAt: '2026-06-20T09:12:00.000Z' },
-  { id: 'ORD1031', date: '14 Jun 2026', itemCount: 2, total: 98, status: 'delivered', createdAt: '2026-06-14T15:40:00.000Z' },
-  { id: 'ORD1019', date: '02 Jun 2026', itemCount: 7, total: 540, status: 'cancelled', createdAt: '2026-06-02T11:05:00.000Z' },
-];

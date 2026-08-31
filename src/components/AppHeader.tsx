@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppMode } from '../state/AppModeContext';
 import { useLocation } from '../state/LocationContext';
 import { useSidePanel } from '../state/SidePanelContext';
@@ -21,15 +21,6 @@ export function AppHeader({ title, onBack }: AppHeaderProps) {
   const { setMode, canAccessDelivery } = useAppMode();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [locationOpen, setLocationOpen] = useState(false);
-  const [comingSoonVisible, setComingSoonVisible] = useState(false);
-
-  const handleDeliveryToggle = () => {
-    if (canAccessDelivery) {
-      setMode('delivery');
-    } else {
-      setComingSoonVisible(true);
-    }
-  };
 
   if (onBack) {
     return (
@@ -52,9 +43,17 @@ export function AppHeader({ title, onBack }: AppHeaderProps) {
       ) : (
         <>
           <View style={styles.mastheadRow}>
-            <Pressable style={styles.iconButton} onPress={handleDeliveryToggle} hitSlop={8}>
-              <MaterialCommunityIcons name="moped-outline" size={19} color={colors.primaryDark} />
-            </Pressable>
+            {/* Only a rider sees the rider switch. It used to be shown to every
+                customer and answered a tap with a "coming soon" sheet, which is
+                a button that does nothing wearing the clothes of a feature. The
+                empty view keeps the wordmark centred. */}
+            {canAccessDelivery ? (
+              <Pressable style={styles.iconButton} onPress={() => setMode('delivery')} hitSlop={8}>
+                <MaterialCommunityIcons name="moped-outline" size={19} color={colors.primaryDark} />
+              </Pressable>
+            ) : (
+              <View style={styles.iconButton} />
+            )}
 
             <View style={styles.wordmarkWrap}>
               <Text style={styles.wordmark}>Lajwab</Text>
@@ -67,35 +66,17 @@ export function AppHeader({ title, onBack }: AppHeaderProps) {
           </View>
 
           <Pressable onPress={() => setLocationOpen(true)} hitSlop={8} style={styles.deliverTo}>
+            {/* "· 45 min" sat here on every screen. Nothing measures a delivery
+                time, and the bakery delivers in booked slots rather than in
+                minutes, so it was a speed promise no one had made. */}
             <Text style={styles.deliverToText} numberOfLines={1}>
-              Deliver to {address.label} · 45 min ▾
+              Deliver to {address.label} ▾
             </Text>
           </Pressable>
         </>
       )}
 
       <LocationPickerModal visible={locationOpen} onClose={() => setLocationOpen(false)} />
-
-      <Modal
-        visible={comingSoonVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setComingSoonVisible(false)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setComingSoonVisible(false)}>
-          <Pressable style={styles.modalSheet} onPress={e => e.stopPropagation()}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalEmoji}>🚴</Text>
-            <Text style={styles.modalTitle}>Delivery Partner Mode</Text>
-            <Text style={styles.modalDesc}>
-              This feature is coming soon. Sign up as a delivery partner to get early access and start earning.
-            </Text>
-            <Pressable style={styles.modalButton} onPress={() => setComingSoonVisible(false)}>
-              <Text style={styles.modalButtonText}>Got it</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -153,51 +134,5 @@ function createStyles(colors: ColorPalette) {
     menuIcon: { fontSize: 16, color: colors.primaryDark },
     backIcon: { fontSize: 20, color: colors.text, fontWeight: '700', lineHeight: 24 },
 
-    modalBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.45)',
-      justifyContent: 'flex-end',
-    },
-    modalSheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
-      padding: spacing.xl,
-      paddingBottom: spacing.xxl,
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    modalHandle: {
-      width: 40,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.border,
-      marginBottom: spacing.sm,
-    },
-    modalEmoji: { fontSize: 48 },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: '800',
-      color: colors.text,
-    },
-    modalDesc: {
-      fontSize: 14,
-      color: colors.textMuted,
-      textAlign: 'center',
-      lineHeight: 21,
-      paddingHorizontal: spacing.lg,
-    },
-    modalButton: {
-      marginTop: spacing.sm,
-      backgroundColor: colors.primary,
-      borderRadius: radius.lg,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.xxl,
-    },
-    modalButtonText: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
   });
 }

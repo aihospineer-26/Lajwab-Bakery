@@ -18,16 +18,30 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
+/* Only what a customer can actually use.
+ *
+ * Lajwab Wallet, Notifications and Payment Methods were listed here and are
+ * gone. Nothing credits a wallet, nothing sends a notification, and Cash on
+ * Delivery is the only way to pay -- the payments screen offered to remember
+ * cards that no gateway could ever add. A menu row is a promise that something
+ * is there, and all three led to a screen that had to explain it was empty.
+ * The screens survive in src/screens for whenever a real system arrives. */
 const QUICK_LINKS = [
-  { id: 'wallet', label: 'Lajwab Wallet', icon: 'wallet-outline', screen: 'Wallet' as const },
-  { id: 'notifications', label: 'Notifications', icon: 'notifications-outline', screen: 'Notifications' as const },
   { id: 'orders', label: 'My Orders', icon: 'cube-outline', screen: 'Orders' as const },
+  { id: 'addresses', label: 'Addresses', icon: 'location-outline', screen: 'Addresses' as const },
+  { id: 'offers', label: 'Offers', icon: 'pricetag-outline', screen: 'Offers' as const },
 ];
 
 const SETTINGS = [
-  { id: 'addresses', label: 'Delivery Addresses', icon: 'location-outline', screen: 'Addresses' as const },
-  { id: 'payments', label: 'Payment Methods', icon: 'card-outline', screen: 'Payments' as const },
+  { id: 'profile', label: 'Profile', icon: 'person-outline', screen: 'Profile' as const },
+  { id: 'savings', label: 'Your savings', icon: 'trending-down-outline', screen: 'SavingsReport' as const },
   { id: 'support', label: 'Help & Support', icon: 'chatbubble-ellipses-outline', screen: 'CustomerSupport' as const },
+  { id: 'settings', label: 'Settings', icon: 'options-outline', screen: 'Settings' as const },
+];
+
+const LEGAL = [
+  { id: 'faq', label: 'FAQs', icon: 'help-circle-outline', screen: 'Faq' as const },
+  { id: 'terms', label: 'Terms of Service', icon: 'document-text-outline', screen: 'Terms' as const },
   { id: 'privacy', label: 'Privacy Policy', icon: 'lock-closed-outline', screen: 'PrivacyPolicy' as const },
 ];
 
@@ -101,14 +115,31 @@ export function AccountScreen({ navigation }: Props) {
           ))}
         </View>
 
-        {/* Settings */}
+        {/* Your account */}
         <View style={styles.sectionCard}>
-          <Text style={[typography.subheading, { marginBottom: spacing.sm }]}>Settings</Text>
+          <Text style={[typography.subheading, { marginBottom: spacing.sm }]}>Your account</Text>
           {SETTINGS.map((item, idx) => (
             <Pressable
               key={item.id}
               style={[styles.settingRow, idx < SETTINGS.length - 1 && styles.settingBorder]}
               onPress={() => item.screen && (navigation as any).navigate(item.screen)}
+              hitSlop={4}
+            >
+              <Ionicons name={item.icon as any} size={18} color={colors.textMuted} style={{ marginRight: spacing.md }} />
+              <Text style={[typography.body, { flex: 1 }]}>{item.label}</Text>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* About — the legal pages a food business has to make reachable */}
+        <View style={styles.sectionCard}>
+          <Text style={[typography.subheading, { marginBottom: spacing.sm }]}>About</Text>
+          {LEGAL.map((item, idx) => (
+            <Pressable
+              key={item.id}
+              style={[styles.settingRow, idx < LEGAL.length - 1 && styles.settingBorder]}
+              onPress={() => (navigation as any).navigate(item.screen)}
               hitSlop={4}
             >
               <Ionicons name={item.icon as any} size={18} color={colors.textMuted} style={{ marginRight: spacing.md }} />
