@@ -1,7 +1,8 @@
-import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { PROFILE_STORAGE_KEY } from '../services/appTarget';
 import { formatMobile } from '../services/otp';
+import { fetchMyProfile, MyProfile, saveMyProfile } from '../services/profile';
 import { useAuth } from './AuthContext';
 
 export type UserRole = 'customer' | 'delivery' | 'admin';
@@ -28,6 +29,11 @@ type UserProfileContextValue = {
    "7838744780@phone.lajwabbakery.local" as their email reads like a bug. */
 const SYNTHETIC_EMAIL_DOMAIN = '@phone.lajwabbakery.local';
 
+function nonEmpty(value: string | undefined | null): string | undefined {
+  const trimmed = (value ?? '').trim();
+  return trimmed === '' ? undefined : trimmed;
+}
+
 function realEmail(email: string | undefined | null): string {
   if (!email || email.endsWith(SYNTHETIC_EMAIL_DOMAIN)) return '';
   return email;
@@ -48,6 +54,23 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
      See PROFILE_STORAGE_KEY in services/appTarget.ts. */
   const [overrides, setOverrides] = usePersistedState<Partial<UserProfile>>(PROFILE_STORAGE_KEY, {});
 
+  /* The server copy, so a name survives a reinstall or a second device.
+     It used to live only in this device's localStorage, which meant the name
+     a customer typed at checkout was gone the moment they cleared the app. */
+  const [server, setServer] = useState<MyProfile | null>(null);
+
+  useEffect(() => {
+    if (!session) {
+      setServer(null);
+      return;
+    }
+    let alive = true;
+    fetchMyProfile()
+      .then((p) => { if (alive) setServer(p); })
+      .catch(() => { /* keeps whatever is stored locally */ });
+    return () => { alive = false; };
+  }, [session]);
+
   /* Derived rather than synced: the user's saved edits win over session values,
      but role always comes from server-set app_metadata and can never be forged.
      There is deliberately no seed profile -- a placeholder name here is shown to
@@ -57,12 +80,15 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
   const profile = useMemo<UserProfile>(() => {
     const user = session?.user;
     return {
-      name: overrides.name ?? (user?.user_metadata?.full_name as string | undefined) ?? '',
-      email: overrides.email ?? realEmail(user?.email),
+      /* Local edits win while they are still being written back, then the
+         two agree. user_metadata is the last resort -- it is only ever set
+         for the Supabase-native OTP path. */
+      name: overrides.name ?? nonEmpty(server?.name) ?? (user?.user_metadata?.full_name as string | undefined) ?? '',
+      email: overrides.email ?? nonEmpty(server?.email) ?? realEmail(user?.email),
       phone: overrides.phone ?? displayPhone(user?.phone),
       role: (user?.app_metadata?.role as UserRole) ?? 'customer',
     };
-  }, [session, overrides]);
+  }, [session, overrides, server]);
 
   /* Anything real the customer has given us beats "Guest": a phone for someone
      who signed in by OTP, an email for staff signing in with a password, who
@@ -88,6 +114,20 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
   const updateProfile = useCallback(
     (updates: Partial<Omit<UserProfile, 'role'>>) => {
       setOverrides(prev => ({ ...prev, ...updates }));
+      /* Written through rather than awaited: the screen that called this has
+         already shown the new value, and a failed sync must not block it. The
+         next fetch reconciles. */
+      if (updates.name !== undefined || updates.email !== undefined) {
+        saveMyProfile({
+          ...(updates.name !== undefined ? { name: updates.name } : {}),
+          ...(updates.email !== undefined ? { email: updates.email } : {}),
+        })
+          .then(() => setServer(prev => ({
+            name: updates.name ?? prev?.name ?? '',
+            email: updates.email ?? prev?.email ?? '',
+          })))
+          .catch(() => { /* stays local; reconciled on the next load */ });
+      }
     },
     [setOverrides],
   );

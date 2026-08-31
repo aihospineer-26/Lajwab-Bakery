@@ -24,6 +24,7 @@ import { CustomerSupportScreen } from './src/screens/CustomerSupportScreen';
 import { FaqScreen } from './src/screens/FaqScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
+import { CompleteProfileScreen } from './src/screens/CompleteProfileScreen';
 import { OrderConfirmationScreen } from './src/screens/OrderConfirmationScreen';
 import { OrdersScreen } from './src/screens/OrdersScreen';
 import { PrivacyPolicyScreen } from './src/screens/PrivacyPolicyScreen';
@@ -34,6 +35,7 @@ import { SearchScreen } from './src/screens/SearchScreen';
 import { TermsScreen } from './src/screens/TermsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchMyProfile } from './src/services/profile';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
 import { OffersScreen } from './src/screens/OffersScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
@@ -277,6 +279,35 @@ function RootNavigator() {
     });
   }, []);
 
+  /* Asked once, the first time an account exists.
+   *
+   * Gated here rather than from OtpScreen so it covers every way in -- the
+   * greeting at first launch, the checkout gate, a session restored mid-signup
+   * after a reload. `null` means "not asked yet"; the shop waits rather than
+   * flashing past the question and losing it.
+   *
+   * It fails open. A profile that cannot be read is treated as complete,
+   * because a dropped request must cost a name, never the whole app. */
+  const [needsProfile, setNeedsProfile] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    if (!session) {
+      setNeedsProfile(false);
+      return;
+    }
+    let alive = true;
+    fetchMyProfile()
+      .then((p) => {
+        if (alive) setNeedsProfile(p !== null && p.name.trim() === '');
+      })
+      .catch(() => {
+        if (alive) setNeedsProfile(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [session]);
+
   const dismissSignInPrompt = React.useCallback(() => {
     setShowSignInFirst(false);
     AsyncStorage.setItem('signin_prompt_dismissed', '1');
@@ -288,7 +319,7 @@ function RootNavigator() {
     if (session) dismissSignInPrompt();
   }, [session, dismissSignInPrompt]);
 
-  if (isLoading || !onboardingChecked || !signInPromptChecked) return null;
+  if (isLoading || !onboardingChecked || !signInPromptChecked || needsProfile === null) return null;
 
   const promptSignIn = showSignInFirst && !session && !needsOnboarding && mode !== 'delivery';
 
@@ -300,6 +331,16 @@ function RootNavigator() {
         </Stack.Screen>
       ) : mode === 'delivery' ? (
         <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
+      ) : needsProfile ? (
+        /* Mounted alone: there is nothing to navigate to until it is answered,
+           and nothing to go back to -- the account already exists. */
+        <>
+          <Stack.Screen name="CompleteProfile">
+            {props => <CompleteProfileScreen {...props} onDone={() => setNeedsProfile(false)} />}
+          </Stack.Screen>
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen name="Terms" component={TermsScreen} />
+        </>
       ) : (
         <>
           {/* Sign-in is offered first, but the catalog stays public: skipping

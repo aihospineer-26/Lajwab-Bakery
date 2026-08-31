@@ -26,6 +26,10 @@ export type RootStackParamList = {
   SignInPrompt: undefined;
   InventoryLogin: undefined;
   VerifyOtp: { mobile: string; fullName?: string };
+  /* Shown once, straight after the first verified code, while profiles.name
+     is still empty. Not reachable by hand -- RootNavigator mounts it instead
+     of the shop, so it cannot be skipped past or arrived at twice. */
+  CompleteProfile: undefined;
   MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
   DeliveryTabs: NavigatorScreenParams<DeliveryTabParamList> | undefined;
   InventoryTabs: NavigatorScreenParams<InventoryTabParamList> | undefined;

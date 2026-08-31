@@ -67,6 +67,50 @@ isLoading || !onboardingChecked || !signInPromptChecked
 its own orders, addresses and cart. The bridge ignores any phone the client
 attaches; trusting it was an account-takeover hole, now closed.
 
+### First-run profile
+
+Signing in verifies a phone number and nothing else, so a brand-new account has
+no name anywhere. `handle_new_user` creates the `profiles` row from
+`raw_user_meta_data`, which the MSG91 path never sets — leaving `profiles.name`
+null, and that null is the signal.
+
+```
+first verified code
+      ↓
+session exists, profiles.name is empty
+      ↓
+CompleteProfile — name (required), email (optional)
+      ↓
+saved to profiles
+      ↓
+the shop, and never asked again
+```
+
+Gated in `RootNavigator` rather than from `OtpScreen`, so it covers every way
+in: the greeting at first launch, the checkout gate, and a session restored
+mid-signup after a reload. While the answer is unknown the navigator renders
+nothing rather than flashing the shop and losing the question. It **fails
+open** — a profile that cannot be read is treated as complete, because a
+dropped request should cost a name, never the whole app. A guest is never
+asked; browsing stays public.
+
+The name is required because somebody has to be handed the box. The email is
+optional and says so, with its own "Skip the email" control — an optional field
+with no visible way past it is not optional. Nothing is sent by email today, so
+it is stored as a contact detail and nothing more.
+
+Both live in `profiles`, not in device storage. The name a customer typed at
+checkout used to survive only in that device's `localStorage`: gone on
+reinstall, invisible on a second device, and invisible to the bakery.
+`UserProfileContext` now reads the server row, with local edits taking
+precedence until the write-through lands. The email cannot go in
+`auth.users.email` — that holds the synthetic
+`<phone>@phone.lajwabbakery.local` address the OTP bridge needs for its
+magic-link exchange, so a real one there would collide with sign-in.
+
+`profiles` RLS was already correct: insert and update own row only, select own
+or staff. Verified — one customer can neither read nor rewrite another's.
+
 ## 1.4 Guest mode
 
 Browsing is public; checkout is not.
