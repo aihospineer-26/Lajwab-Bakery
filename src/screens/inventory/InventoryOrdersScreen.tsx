@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Skeleton } from '../../components/Skeleton';
-import { Order, OrderItem, OrderStatus, STATUS_LABEL } from '../../data/orders';
+import { formatOrderRef, Order, OrderItem, OrderStatus, STATUS_LABEL } from '../../data/orders';
 import {
   cancelOrderAsStaff,
   fetchAllOrders,
@@ -122,7 +122,7 @@ export function InventoryOrdersScreen() {
         const fetched = await fetchOrderItems(order.id);
         setItems((prev) => ({ ...prev, [order.id]: fetched }));
       } catch {
-        setActionError(`Could not load items for ${order.id}`);
+        setActionError(`Could not load items for #${formatOrderRef(order.id)}`);
       }
     },
     [expandedId, items],
@@ -152,7 +152,7 @@ export function InventoryOrdersScreen() {
   const cancel = useCallback(
     async (order: Order) => {
       const ok = await confirm(
-        `Cancel ${order.id}?`,
+        `Cancel #${formatOrderRef(order.id)}?`,
         'The customer will see this order as cancelled. This cannot be undone.',
         'Cancel order',
         'Keep order',
@@ -210,7 +210,7 @@ export function InventoryOrdersScreen() {
         <Pressable style={styles.cardHead} onPress={() => toggleExpand(order)}>
           <View style={{ flex: 1, gap: 3 }}>
             <View style={styles.idRow}>
-              <Text style={styles.orderId}>{order.id}</Text>
+              <Text style={styles.orderId}>#{formatOrderRef(order.id)}</Text>
               {isLate && (
                 <View style={styles.latePill}>
                   <Feather name="clock" size={10} color={colors.danger} />

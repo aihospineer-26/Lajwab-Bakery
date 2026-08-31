@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
-import { Order, OrderStatus, STATUS_LABEL } from '../data/orders';
+import { CUSTOMER_STATUS_LABEL, formatOrderRef, Order, OrderStatus } from '../data/orders';
 import { RootStackParamList } from '../navigation/types';
 import { fetchOrders } from '../services/orders';
 import { useTheme } from '../state/ThemeContext';
@@ -108,12 +108,12 @@ export function OrdersScreen({ navigation }: Props) {
               >
                 <View style={styles.cardTop}>
                   <View style={styles.orderIdWrap}>
-                    <Text style={styles.orderId}>#{order.id}</Text>
+                    <Text style={styles.orderId}>#{formatOrderRef(order.id)}</Text>
                     <Text style={styles.orderDate}>{order.date}</Text>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
                     <Text style={styles.statusIcon}>{cfg.icon}</Text>
-                    <Text style={[styles.statusText, { color: cfg.text }]}>{STATUS_LABEL[order.status]}</Text>
+                    <Text style={[styles.statusText, { color: cfg.text }]}>{CUSTOMER_STATUS_LABEL[order.status]}</Text>
                   </View>
                 </View>
 

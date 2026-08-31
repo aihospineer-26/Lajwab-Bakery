@@ -31,7 +31,10 @@ export type RootStackParamList = {
   InventoryTabs: NavigatorScreenParams<InventoryTabParamList> | undefined;
   Category: { categoryId: string; categoryName: string };
   ProductDetail: { productId: string };
-  OrderConfirmation: undefined;
+  /* The real order place_order just created. Never optional: the screen shows
+     the database's own status for this row, and without an id it would have
+     nothing to read and would be back to inventing progress. */
+  OrderConfirmation: { orderId: string };
   Checkout: undefined;
   OrderTracking: { orderId: string; status: string };
   Offers: undefined;

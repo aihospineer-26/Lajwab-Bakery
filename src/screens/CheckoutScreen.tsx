@@ -186,7 +186,7 @@ export function CheckoutScreen({ navigation }: Props) {
       }));
       const slot = slots.find(sl => sl.id === selectedSlot);
       if (requestIdRef.current === null) requestIdRef.current = newRequestId();
-      await placeOrder(items, {
+      const newOrderId = await placeOrder(items, {
         address: {
           label: address.label,
           line1: address.line1,
@@ -212,7 +212,9 @@ export function CheckoutScreen({ navigation }: Props) {
       await AsyncStorage.setItem(CONTACT_KEY, JSON.stringify({ name: customerName.trim() }));
       await refetchProducts();
       clearCart();
-      navigation.navigate('OrderConfirmation');
+      /* The id place_order returned, carried through so the confirmation screen
+         reads this order's real status instead of animating a made-up one. */
+      navigation.navigate('OrderConfirmation', { orderId: newOrderId });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not place order. Please try again.');
     } finally {

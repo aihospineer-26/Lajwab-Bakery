@@ -14,10 +14,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { isCancellable, normalizeStatus, OrderItem, OrderStatus, STATUS_LABEL } from '../data/orders';
+import {
+  CUSTOMER_STATUS_LABEL,
+  formatOrderRef,
+  isCancellable,
+  normalizeStatus,
+  ORDER_STEPS,
+  OrderItem,
+  OrderStatus,
+  statusToStep,
+} from '../data/orders';
 import { RootStackParamList } from '../navigation/types';
 import { cancelOrder, fetchOrderById, fetchOrderItems } from '../services/orders';
-import { useAuth } from '../state/AuthContext';
 import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { confirm } from '../utils/confirm';
@@ -25,52 +33,30 @@ import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrderTracking'>;
 
-/* One step per real status, in the order the trigger allows.
- *
- * There used to be four steps for five statuses: 'accepted' and 'packed' shared
- * "Picking Fresh Items", so a customer watching the tracker could not tell that
- * the bakery had started baking, and the copy described a grocery picker and a
- * rider on the way -- neither of which exists here. Keeping this list aligned
- * with the enum means the screen can never show a stage the backend cannot be
- * in. Labels are for people; the ids stay the database's. */
-const STEPS: { id: OrderStatus; label: string; sub: string; icon: string }[] = [
-  { id: 'placed', label: 'Order placed', sub: 'We have your order', icon: '📝' },
-  { id: 'accepted', label: 'Bakery accepted', sub: 'The bakery confirmed it', icon: '✅' },
-  { id: 'packed', label: 'Preparing your order', sub: 'Baking and boxing it up', icon: '🧁' },
-  { id: 'out_for_delivery', label: 'Out for delivery', sub: 'On its way to you', icon: '🛵' },
-  { id: 'delivered', label: 'Delivered', sub: 'Enjoy your order!', icon: '🏠' },
-];
-
-const STATUS_TO_STEP: Record<OrderStatus, number> = {
-  placed: 0,
-  accepted: 1,
-  packed: 2,
-  out_for_delivery: 3,
-  delivered: 4,
-  cancelled: 0,
-};
-
+/* Shared with OrderConfirmationScreen -- both watch the same row. */
+const POLL_MS = 8000;
 
 export function OrderTrackingScreen({ navigation, route }: Props) {
   const { orderId, status } = route.params;
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const { session } = useAuth();
-  const isDevPreview = __DEV__ && !session;
-
-  /* Seeded from the route param, then kept current by the poll below so the
-     screen follows what the rider actually does. */
+  /* Seeded from the route param so the first paint is not blank, then kept
+     current by the poll below. The bakery's dashboard is the only thing that
+     can change it. */
   const [orderStatus, setOrderStatus] = useState<OrderStatus>(normalizeStatus(status));
   const [items, setItems] = useState<OrderItem[]>([]);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  /* An id that reads back as nothing is an id that is not this customer's --
+     RLS scopes the lookup. Rendering the tracker anyway would draw a stage out
+     of the route param, which is exactly the fabricated progress this screen
+     stopped showing. */
+  const [notFound, setNotFound] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const isCancelled = orderStatus === 'cancelled';
-  const [simulatedStep, setSimulatedStep] = useState(STATUS_TO_STEP[normalizeStatus(status)] ?? 0);
-  const currentStep = isDevPreview ? simulatedStep : STATUS_TO_STEP[orderStatus] ?? 0;
-  const setCurrentStep = setSimulatedStep;
+  const currentStep = statusToStep(orderStatus);
 
   useEffect(() => {
     fetchOrderItems(orderId).then(setItems).catch(() => setItems([]));
@@ -79,37 +65,29 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
   /* Live status. Polling beats a Realtime socket here — it survives the app
      being backgrounded and reconnects for free on flaky mobile data. */
   useEffect(() => {
-    if (isDevPreview) return;
     const tick = async () => {
       try {
         const fresh = await fetchOrderById(orderId);
-        if (fresh) setOrderStatus(fresh.status);
+        if (fresh) {
+          setOrderStatus(fresh.status);
+          setNotFound(false);
+        } else {
+          setNotFound(true);
+        }
       } catch {
         // transient network failure — next tick retries
       }
     };
     tick();
-    const id = setInterval(tick, 8000);
+    const id = setInterval(tick, POLL_MS);
     return () => clearInterval(id);
-  }, [isDevPreview, orderId]);
+  }, [orderId]);
 
-  const isDelivered = currentStep >= STEPS.length - 1;
-  const isLive = !isCancelled && orderStatus !== 'delivered';
-  // Eligibility tracks the real server status, not the visual step simulation
-  // below, which can run ahead of it.
+  const isDelivered = orderStatus === 'delivered';
+  const isLive = !isCancelled && !isDelivered;
+  /* The server's status decides this too. There is no longer any client-side
+     step to run ahead of it. */
   const canCancel = isCancellable(orderStatus) && !isCancelled;
-
-  /* Demo-only step simulation. A real order must never advance on a timer —
-     showing "Out for Delivery" 8s after checkout is a lie the customer will
-     act on. With a session, the tracker reflects the actual server status. */
-  useEffect(() => {
-    if (!isDevPreview || !isLive || isDelivered) return;
-    const timers = [
-      setTimeout(() => setCurrentStep(s => Math.min(s + 1, STEPS.length - 1)), 8000),
-      setTimeout(() => setCurrentStep(s => Math.min(s + 1, STEPS.length - 1)), 20000),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [isDevPreview, isLive, isDelivered]);
 
   const handleCancel = async () => {
     const confirmed = await confirm(
@@ -147,9 +125,19 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title={`Order #${orderId}`} onBack={() => navigation.goBack()} />
+      <AppHeader title={`Order #${formatOrderRef(orderId)}`} onBack={() => navigation.goBack()} />
 
       <ScreenContainer>
+      {notFound ? (
+        <View style={styles.notFound}>
+          <Ionicons name="alert-circle-outline" size={38} color={colors.border} />
+          <Text style={styles.notFoundTitle}>We couldn't find this order</Text>
+          <Text style={styles.notFoundBody}>
+            It may belong to another account, or it may have been removed. Your
+            own orders are all under My Orders.
+          </Text>
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
         {/* Cancelled banner */}
@@ -177,13 +165,13 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
             customer opens precisely because they want to reach somebody. Nobody
             is assigned to orders yet, so it points at the bakery instead, and
             the buttons only appear when STORE actually has a number to dial. */}
-        {currentStep >= 2 && !isDelivered && !isCancelled ? (
+        {orderStatus === 'out_for_delivery' ? (
           <View style={styles.riderCard}>
             <View style={styles.riderAvatar}>
               <Text style={styles.riderInitial}>🛵</Text>
             </View>
             <View style={styles.riderInfo}>
-              <Text style={styles.riderName}>On the way to you</Text>
+              <Text style={styles.riderName}>Your order is on the way</Text>
               <Text style={styles.riderDetail}>
                 {STORE.phone || STORE.whatsapp
                   ? 'Need it sooner, or somewhere else? Call the bakery.'
@@ -217,9 +205,12 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        {/* Step tracker */}
+        {/* Step tracker. Hidden once cancelled: the order has left the
+            sequence, and drawing it with step one lit under a Cancelled banner
+            says the opposite of the banner. */}
+        {isCancelled ? null : (
         <View style={styles.trackerCard}>
-          {STEPS.map((step, idx) => {
+          {ORDER_STEPS.map((step, idx) => {
             const done = idx < currentStep;
             const active = idx === currentStep;
             const pending = idx > currentStep;
@@ -245,7 +236,7 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
                     <View style={[styles.dot, styles.dotPending]} />
                   )}
 
-                  {idx < STEPS.length - 1 ? (
+                  {idx < ORDER_STEPS.length - 1 ? (
                     <View style={[styles.connector, done ? styles.connectorDone : styles.connectorPending]} />
                   ) : (
                     <View style={styles.connectorSpacer} />
@@ -266,6 +257,7 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
             );
           })}
         </View>
+        )}
 
         {/* ETA or celebration */}
         {isCancelled ? null : isDelivered ? (
@@ -304,12 +296,12 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
         <View style={styles.metaCard}>
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Order ID</Text>
-            <Text style={styles.metaValue}>#{orderId}</Text>
+            <Text style={styles.metaValue}>#{formatOrderRef(orderId)}</Text>
           </View>
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Status</Text>
             <Text style={styles.metaValue}>
-              {isCancelled ? STATUS_LABEL.cancelled : STEPS[currentStep].label}
+              {CUSTOMER_STATUS_LABEL[orderStatus]}
             </Text>
           </View>
         </View>
@@ -345,6 +337,7 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
         )}
 
       </ScrollView>
+      )}
       </ScreenContainer>
     </SafeAreaView>
   );
@@ -353,6 +346,15 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    notFound: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.xl,
+      gap: spacing.sm,
+    },
+    notFoundTitle: { fontSize: 16, fontWeight: '800', color: colors.text, textAlign: 'center' },
+    notFoundBody: { fontSize: 13, lineHeight: 20, color: colors.textMuted, textAlign: 'center' },
     content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
 
     liveBadge: {

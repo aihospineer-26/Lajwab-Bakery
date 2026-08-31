@@ -136,6 +136,26 @@ placed -> accepted -> packed -> out_for_delivery -> delivered
 `orders_cancel_own` RLS policy). Cancelling restores stock exactly once — the
 trigger fires on the edge into `cancelled`, so cancelling twice restores once.
 
+**Only the dashboard moves an order along.** `place_order` returns the new order
+id, checkout passes it to `OrderConfirmation({ orderId })`, and both
+`OrderConfirmationScreen` and `OrderTrackingScreen` poll `fetchOrderById` every
+8s and render `ORDER_STEPS[statusToStep(status)]`. Neither holds a timer or a
+step of its own: if the bakery does nothing, the customer sees "Order Placed"
+indefinitely — and the screen says so, rather than leaving a dead tracker to
+look broken. Both survive a reload, because nothing about the stage is kept on
+the device.
+
+The confirmation screen used to invent an `ORD-####` number with `Math.random`
+and walk itself to "Delivered" 22 seconds after checkout, telling customers
+their order had arrived before the bakery had seen it. Customer screens now
+print `formatOrderRef(id)` — the last six characters of the real uuid — and the
+dashboard prints the same six, so both sides quote one reference.
+
+Customer wording differs from the operational wording by design: `packed` reads
+as "Being Prepared" to the person waiting (`CUSTOMER_STATUS_LABEL`) and stays
+"Packed" on the dashboard (`STATUS_LABEL`). A customer's token cannot write any
+status but `cancelled`, and only from `placed` or `accepted`.
+
 ## 1.8 Account section
 
 **Quick links:** `Orders` · `Addresses` · `Offers`

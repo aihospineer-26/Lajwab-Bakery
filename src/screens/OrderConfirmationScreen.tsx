@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Linking,
   Pressable,
@@ -12,45 +13,89 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
+import {
+  CUSTOMER_STATUS_LABEL,
+  formatOrderRef,
+  Order,
+  ORDER_STEPS,
+  statusToStep,
+} from '../data/orders';
+import { fetchOrderById } from '../services/orders';
 import { STORE } from '../data/store';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrderConfirmation'>;
 
-const STEPS = [
-  { id: 'confirmed', label: 'Order Confirmed', sub: 'We received your order', icon: '✅' },
-  { id: 'picking', label: 'Picking Fresh Items', sub: 'Handpicking the freshest for you', icon: '🥬' },
-  { id: 'delivery', label: 'Out for Delivery', sub: 'Your rider is on the way!', icon: '🛵' },
-  { id: 'delivered', label: 'Delivered', sub: 'Enjoy your order!', icon: '🏠' },
-];
+/* Matches OrderTrackingScreen deliberately -- the two screens watch the same
+   row, and there is no reason for one to notice the bakery before the other. */
+const POLL_MS = 8000;
 
-/* Steps auto-advance timings (ms from mount) */
-const STEP_DELAYS = [0, 4000, 10000, 22000];
-
-export function OrderConfirmationScreen({ navigation }: Props) {
-  const { colors, typography } = useTheme();
+/* This screen used to be an animation. It invented an order number with
+   Math.random, ticked through four steps on setTimeout, and told the customer
+   their order had been delivered twenty-two seconds after checkout -- while the
+   real row still said 'placed' and nobody at the bakery had seen it. Everything
+   here now comes from the order place_order actually created, and it moves only
+   when the bakery moves it on the dashboard. */
+export function OrderConfirmationScreen({ navigation, route }: Props) {
+  const { orderId } = route.params;
+  const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const orderId = useMemo(
-    () => `ORD-${Math.floor(1000 + Math.random() * 8999)}`,
-    [],
-  );
-
-  const [currentStep, setCurrentStep] = useState(0);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  /* Auto-advance through steps */
-  useEffect(() => {
-    const timers = STEP_DELAYS.slice(1).map((delay, idx) =>
-      setTimeout(() => setCurrentStep(idx + 1), delay),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, []);
+  /* Held beside the state so a dropped poll can tell "never loaded" from
+     "loaded, and this one tick failed". A network blip must leave the last
+     known status on screen rather than replacing it with an error -- and must
+     never be mistaken for progress. */
+  const orderRef = useRef<Order | null>(null);
 
-  /* Pulse animation for the active step dot */
+  /* Live status, straight from the row. Polling rather than a Realtime socket
+     for the same reason as the tracking screen: it survives the app being
+     backgrounded and reconnects for free on flaky mobile data. */
   useEffect(() => {
-    if (currentStep >= STEPS.length - 1) return;
+    let alive = true;
+
+    const tick = async () => {
+      try {
+        const fresh = await fetchOrderById(orderId);
+        if (!alive) return;
+        if (fresh) {
+          orderRef.current = fresh;
+          setOrder(fresh);
+          setLoadError(null);
+        } else {
+          setLoadError("We couldn't find this order on your account.");
+        }
+      } catch {
+        if (!alive) return;
+        if (!orderRef.current) {
+          setLoadError("Couldn't load your order. Check your connection.");
+        }
+      } finally {
+        if (alive) setIsLoading(false);
+      }
+    };
+
+    tick();
+    const id = setInterval(tick, POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [orderId]);
+
+  const status = order?.status ?? 'placed';
+  const isCancelled = status === 'cancelled';
+  const isDelivered = status === 'delivered';
+  const currentStep = statusToStep(status);
+
+  /* Decoration only: it marks where the order has reached, it never decides. */
+  useEffect(() => {
+    if (!order || isDelivered || isCancelled) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.35, duration: 650, useNativeDriver: true }),
@@ -59,172 +104,209 @@ export function OrderConfirmationScreen({ navigation }: Props) {
     );
     loop.start();
     return () => loop.stop();
-  }, [currentStep, pulseAnim]);
+  }, [currentStep, isDelivered, isCancelled, order, pulseAnim]);
 
-  const isDelivered = currentStep >= STEPS.length - 1;
+  const goHome = () => navigation.navigate('MainTabs', { screen: 'Home' });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Green header */}
       <View style={styles.header}>
-        <Pressable
-          style={styles.backBtn}
-          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-          hitSlop={10}
-        >
+        <Pressable style={styles.backBtn} onPress={goHome} hitSlop={10}>
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>My Orders</Text>
+        <Text style={styles.headerTitle}>Order Confirmed</Text>
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Same invented rider and same dead call/chat buttons as the tracking
-            screen carried; see the note there. Points at the bakery, and only
-            offers a button STORE can actually dial. */}
-        {currentStep >= 2 && !isDelivered ? (
-          <View style={styles.riderCard}>
-            <View style={styles.riderAvatar}>
-              <Text style={styles.riderInitial}>🛵</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.riderName}>On the way to you</Text>
-              <Text style={styles.riderVehicle}>
-                {STORE.phone || STORE.whatsapp
-                  ? 'Call the bakery if you need to change anything.'
-                  : 'Your order has left ' + STORE.name + '.'}
-              </Text>
-            </View>
-            {STORE.phone ? (
-              <Pressable
-                style={styles.riderAction}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={'Call ' + STORE.name}
-                onPress={() => Linking.openURL('tel:' + STORE.phone.replace(/\s/g, ''))}
-              >
-                <Ionicons name="call-outline" size={17} color={colors.primary} />
-              </Pressable>
-            ) : null}
-            {STORE.whatsapp ? (
-              <Pressable
-                style={styles.riderAction}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={'Message ' + STORE.name + ' on WhatsApp'}
-                onPress={() =>
-                  Linking.openURL('https://wa.me/' + STORE.whatsapp.replace(/[^0-9]/g, ''))
-                }
-              >
-                <Ionicons name="chatbubble-outline" size={17} color={colors.primary} />
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
-
-        {/* Active Order section */}
-        <View style={styles.orderCard}>
-          <Text style={styles.orderLabel}>ACTIVE ORDER</Text>
-          <Text style={styles.orderId}>#{orderId}</Text>
-
-          {/* Step tracker */}
-          <View style={styles.tracker}>
-            {STEPS.map((step, idx) => {
-              const done = idx < currentStep;
-              const active = idx === currentStep;
-              const pending = idx > currentStep;
-
-              return (
-                <View key={step.id} style={styles.stepRow}>
-                  {/* Line + dot column */}
-                  <View style={styles.stepLeft}>
-                    {/* Top connector */}
-                    {idx > 0 ? (
-                      <View
-                        style={[
-                          styles.connector,
-                          done || active ? styles.connectorDone : styles.connectorPending,
-                        ]}
-                      />
-                    ) : (
-                      <View style={styles.connectorSpacer} />
-                    )}
-
-                    {/* Dot */}
-                    {active && !isDelivered ? (
-                      <Animated.View
-                        style={[styles.dot, styles.dotActive, { transform: [{ scale: pulseAnim }] }]}
-                      >
-                        <View style={styles.dotActiveFill} />
-                      </Animated.View>
-                    ) : done || isDelivered ? (
-                      <View style={[styles.dot, styles.dotDone]}>
-                        <Text style={styles.dotCheck}>✓</Text>
-                      </View>
-                    ) : (
-                      <View style={[styles.dot, styles.dotPending]} />
-                    )}
-
-                    {/* Bottom connector */}
-                    {idx < STEPS.length - 1 ? (
-                      <View
-                        style={[
-                          styles.connector,
-                          done ? styles.connectorDone : styles.connectorPending,
-                        ]}
-                      />
-                    ) : (
-                      <View style={styles.connectorSpacer} />
-                    )}
-                  </View>
-
-                  {/* Text column */}
-                  <View style={styles.stepText}>
-                    <Text
-                      style={[
-                        styles.stepLabel,
-                        (done || active) && !pending && styles.stepLabelActive,
-                        pending && styles.stepLabelPending,
-                      ]}
-                    >
-                      {step.label}
-                    </Text>
-                    {(done || active) ? (
-                      <Text style={styles.stepSub}>{step.sub}</Text>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
+      {isLoading && !order ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.primary} size="large" />
         </View>
-
-        {/* Celebration card on delivery */}
-        {isDelivered ? (
-          <View style={styles.celebCard}>
-            <Text style={styles.celebEmoji}>🎉</Text>
-            <Text style={styles.celebTitle}>Delivered!</Text>
-            <Text style={styles.celebSub}>Hope you enjoy everything, fresh from our oven.</Text>
-          </View>
-        ) : (
-          /* ETA strip */
-          <View style={styles.etaCard}>
-            <Text style={styles.etaIcon}>⚡</Text>
-            <View>
-              <Text style={styles.etaLabel}>Estimated Arrival</Text>
-              <Text style={styles.etaTime}>{STORE.deliveryEta}</Text>
+      ) : !order ? (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={38} color={colors.border} />
+          <Text style={styles.errorTitle}>{loadError ?? "Couldn't load your order."}</Text>
+          <Text style={styles.errorBody}>
+            Your order may still have been placed — check My Orders before
+            ordering again{STORE.phone ? ', or call the bakery on ' + STORE.phone : ''}.
+          </Text>
+          <Pressable style={styles.ctaBtn} onPress={() => navigation.navigate('Orders')}>
+            <Text style={styles.ctaBtnText}>My Orders</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Nobody is assigned to deliveries yet, so this points at the bakery
+              rather than naming a rider who does not exist, and only offers a
+              button STORE actually has a number for. */}
+          {status === 'out_for_delivery' ? (
+            <View style={styles.riderCard}>
+              <View style={styles.riderAvatar}>
+                <Text style={styles.riderInitial}>🛵</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.riderName}>Your order is on the way</Text>
+                <Text style={styles.riderVehicle}>
+                  {STORE.phone || STORE.whatsapp
+                    ? 'Call the bakery if you need to change anything.'
+                    : 'Your order has left ' + STORE.name + '.'}
+                </Text>
+              </View>
+              {STORE.phone ? (
+                <Pressable
+                  style={styles.riderAction}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={'Call ' + STORE.name}
+                  onPress={() => Linking.openURL('tel:' + STORE.phone.replace(/\s/g, ''))}
+                >
+                  <Ionicons name="call-outline" size={17} color={colors.primary} />
+                </Pressable>
+              ) : null}
+              {STORE.whatsapp ? (
+                <Pressable
+                  style={styles.riderAction}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={'Message ' + STORE.name + ' on WhatsApp'}
+                  onPress={() =>
+                    Linking.openURL('https://wa.me/' + STORE.whatsapp.replace(/[^0-9]/g, ''))
+                  }
+                >
+                  <Ionicons name="chatbubble-outline" size={17} color={colors.primary} />
+                </Pressable>
+              ) : null}
             </View>
-          </View>
-        )}
+          ) : null}
 
-        {/* Back to shopping */}
-        <Pressable
-          style={styles.ctaBtn}
-          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
-        >
-          <Text style={styles.ctaBtnText}>Continue Shopping</Text>
-        </Pressable>
-      </ScrollView>
+          {isCancelled ? (
+            <View style={styles.cancelledBanner}>
+              <Ionicons name="close-circle-outline" size={30} color={colors.danger} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cancelledTitle}>Order Cancelled</Text>
+                <Text style={styles.cancelledSub}>This order will not be delivered.</Text>
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.orderCard}>
+            <Text style={styles.orderLabel}>YOUR ORDER</Text>
+            <Text style={styles.orderId}>#{formatOrderRef(order.id)}</Text>
+            <Text style={styles.orderMeta}>
+              {order.itemCount} item{order.itemCount !== 1 ? 's' : ''} · ₹{order.total} ·{' '}
+              {CUSTOMER_STATUS_LABEL[status]}
+            </Text>
+
+            {isCancelled ? null : (
+              <View style={styles.tracker}>
+                {ORDER_STEPS.map((step, idx) => {
+                  const done = idx < currentStep;
+                  const active = idx === currentStep;
+                  const pending = idx > currentStep;
+
+                  return (
+                    <View key={step.id} style={styles.stepRow}>
+                      <View style={styles.stepLeft}>
+                        {idx > 0 ? (
+                          <View
+                            style={[
+                              styles.connector,
+                              done || active ? styles.connectorDone : styles.connectorPending,
+                            ]}
+                          />
+                        ) : (
+                          <View style={styles.connectorSpacer} />
+                        )}
+
+                        {active && !isDelivered ? (
+                          <Animated.View
+                            style={[
+                              styles.dot,
+                              styles.dotActive,
+                              { transform: [{ scale: pulseAnim }] },
+                            ]}
+                          >
+                            <View style={styles.dotActiveFill} />
+                          </Animated.View>
+                        ) : done || isDelivered ? (
+                          <View style={[styles.dot, styles.dotDone]}>
+                            <Text style={styles.dotCheck}>✓</Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.dot, styles.dotPending]} />
+                        )}
+
+                        {idx < ORDER_STEPS.length - 1 ? (
+                          <View
+                            style={[
+                              styles.connector,
+                              done ? styles.connectorDone : styles.connectorPending,
+                            ]}
+                          />
+                        ) : (
+                          <View style={styles.connectorSpacer} />
+                        )}
+                      </View>
+
+                      <View style={styles.stepText}>
+                        <Text
+                          style={[
+                            styles.stepLabel,
+                            (done || active) && styles.stepLabelActive,
+                            pending && styles.stepLabelPending,
+                          ]}
+                        >
+                          {step.label}
+                        </Text>
+                        {done || active ? <Text style={styles.stepSub}>{step.sub}</Text> : null}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* Said plainly, because a tracker that sits still reads as broken.
+              The step only moves when the bakery moves it, so the screen has to
+              explain the wait rather than fake activity to fill it. */}
+          {status === 'placed' ? (
+            <Text style={styles.waitNote}>
+              {STORE.name} will confirm your order shortly. This page updates on
+              its own as they prepare it — there is no need to refresh.
+            </Text>
+          ) : null}
+
+          {isCancelled ? null : isDelivered ? (
+            <View style={styles.celebCard}>
+              <Text style={styles.celebEmoji}>🎉</Text>
+              <Text style={styles.celebTitle}>Delivered!</Text>
+              <Text style={styles.celebSub}>Hope you enjoy everything, fresh from our oven.</Text>
+            </View>
+          ) : (
+            <View style={styles.etaCard}>
+              <Text style={styles.etaIcon}>⚡</Text>
+              <View>
+                <Text style={styles.etaLabel}>Estimated Arrival</Text>
+                <Text style={styles.etaTime}>{STORE.deliveryEta}</Text>
+              </View>
+            </View>
+          )}
+
+          <Pressable
+            style={styles.trackBtn}
+            onPress={() =>
+              navigation.navigate('OrderTracking', { orderId: order.id, status: order.status })
+            }
+          >
+            <Text style={styles.trackBtnText}>View order details</Text>
+          </Pressable>
+
+          <Pressable style={styles.ctaBtn} onPress={goHome}>
+            <Text style={styles.ctaBtnText}>Continue Shopping</Text>
+          </Pressable>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -262,6 +344,26 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '800',
       color: '#FFFFFF',
     },
+    /* ── Loading / error ── */
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.xl,
+      gap: spacing.sm,
+    },
+    errorTitle: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    errorBody: {
+      fontSize: 13,
+      lineHeight: 20,
+      color: colors.textMuted,
+      textAlign: 'center',
+    },
     /* ── Content ── */
     content: {
       paddingHorizontal: spacing.lg,
@@ -269,7 +371,18 @@ function createStyles(colors: ColorPalette) {
       paddingBottom: spacing.xxl,
       gap: spacing.md,
     },
-    /* ── Rider card ── */
+    /* ── Cancelled ── */
+    cancelledBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: '#FEE2E2',
+      borderRadius: radius.lg,
+      padding: spacing.md,
+    },
+    cancelledTitle: { fontSize: 15, fontWeight: '800', color: '#991B1B' },
+    cancelledSub: { fontSize: 12, color: '#B91C1C', marginTop: 1 },
+    /* ── On-the-way card ── */
     riderCard: {
       backgroundColor: colors.surface,
       borderRadius: radius.lg,
@@ -303,16 +416,6 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '700',
       color: colors.text,
     },
-    riderMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      marginTop: 2,
-    },
-    riderStar: {
-      fontSize: 12,
-      color: colors.textMuted,
-    },
     riderVehicle: {
       fontSize: 12,
       color: colors.textMuted,
@@ -324,9 +427,6 @@ function createStyles(colors: ColorPalette) {
       backgroundColor: colors.primaryLight,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    riderActionIcon: {
-      fontSize: 17,
     },
     /* ── Order card ── */
     orderCard: {
@@ -352,6 +452,11 @@ function createStyles(colors: ColorPalette) {
       fontSize: 20,
       fontWeight: '900',
       color: colors.text,
+    },
+    orderMeta: {
+      fontSize: 13,
+      color: colors.textMuted,
+      marginTop: 2,
       marginBottom: spacing.lg,
     },
     /* ── Tracker ── */
@@ -436,6 +541,14 @@ function createStyles(colors: ColorPalette) {
       color: colors.textMuted,
       marginTop: 1,
     },
+    /* ── Wait note ── */
+    waitNote: {
+      fontSize: 12.5,
+      lineHeight: 19,
+      color: colors.textMuted,
+      textAlign: 'center',
+      paddingHorizontal: spacing.md,
+    },
     /* ── ETA ── */
     etaCard: {
       backgroundColor: colors.primaryLight,
@@ -480,11 +593,24 @@ function createStyles(colors: ColorPalette) {
       color: colors.primary,
       textAlign: 'center',
     },
-    /* ── CTA ── */
+    /* ── Actions ── */
+    trackBtn: {
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+      borderRadius: radius.full,
+      paddingVertical: spacing.md,
+      alignItems: 'center',
+    },
+    trackBtnText: {
+      color: colors.primary,
+      fontSize: 15,
+      fontWeight: '800',
+    },
     ctaBtn: {
       backgroundColor: colors.primary,
       borderRadius: radius.full,
       paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
       alignItems: 'center',
       shadowColor: colors.primary,
       shadowOpacity: 0.3,
