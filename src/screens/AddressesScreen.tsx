@@ -1,6 +1,15 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { Badge } from '../components/Badge';
@@ -159,29 +168,37 @@ export function AddressesScreen({ navigation }: Props) {
           <Card style={styles.formCard}>
             <Text style={typography.subheading}>New address</Text>
 
-            <Pressable
-              style={styles.locateBtn}
-              onPress={handleUseLocation}
-              disabled={isLocating}
-            >
-              {isLocating ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Text style={styles.locateText}>Use my current location</Text>
-              )}
-            </Pressable>
+            {Platform.OS === 'web' && (
+              <Pressable
+                style={styles.locateBtn}
+                onPress={handleUseLocation}
+                disabled={isLocating}
+              >
+                {isLocating ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text style={styles.locateText}>Use my current location</Text>
+                )}
+              </Pressable>
+            )}
 
             {/* Rooftop accuracy matters in Janakpuri's lanes, where the street
-                name alone often is not enough to find a door. */}
+                name alone often is not enough to find a door. On native the map
+                auto-locates and offers its own recenter button, matching the
+                pan-to-place-a-fixed-pin pattern delivery apps use; web keeps
+                the simpler tap-to-drop-a-pin flow above. */}
             <MapPicker
               lat={coords?.lat ?? FALLBACK_COORDS.lat}
               lng={coords?.lng ?? FALLBACK_COORDS.lng}
               onChange={handlePinMove}
+              onLocateError={setFormError}
             />
             <Text style={styles.mapHint}>
-              {coords
-                ? 'Drag the pin to your exact door.'
-                : 'Tap the map or use your location to drop a pin.'}
+              {Platform.OS === 'web'
+                ? coords
+                  ? 'Drag the pin to your exact door.'
+                  : 'Tap the map or use your location to drop a pin.'
+                : 'Pan the map to set your exact door.'}
             </Text>
             <TextInput
               style={styles.input}
