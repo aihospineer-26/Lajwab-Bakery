@@ -29,6 +29,7 @@ import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 import { SERIF_BOLD } from '../theme/typography';
+import { errorMessage } from '../utils/errorMessage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checkout'>;
 
@@ -265,7 +266,7 @@ export function CheckoutScreen({ navigation }: Props) {
          reads this order's real status instead of animating a made-up one. */
       navigation.navigate('OrderConfirmation', { orderId: newOrderId });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not place order. Please try again.');
+      setError(errorMessage(err, 'Could not place order. Please try again.'));
     } finally {
       setIsPlacing(false);
     }
