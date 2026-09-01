@@ -23,6 +23,7 @@ import { getCurrentCoords, reverseGeocode } from '../services/geocoding';
 import { useLocation } from '../state/LocationContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { errorMessage } from '../utils/errorMessage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Addresses'>;
 
@@ -116,7 +117,7 @@ export function AddressesScreen({ navigation }: Props) {
       resetForm();
       setIsAdding(false);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not save address');
+      setFormError(errorMessage(err, 'Could not save address'));
     } finally {
       setIsSaving(false);
     }

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Category } from '../data/categories';
 import { fetchCategories, fetchProducts, ProductWithStock } from '../services/catalog';
+import { errorMessage } from '../utils/errorMessage';
 
 type CatalogContextValue = {
   products: ProductWithStock[];
@@ -28,7 +29,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
         setProducts(productsData);
         setCategories(categoriesData);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load catalog'))
+      .catch((err) => setError(errorMessage(err, 'Failed to load catalog')))
       .finally(() => setIsLoading(false));
   }, []);
 

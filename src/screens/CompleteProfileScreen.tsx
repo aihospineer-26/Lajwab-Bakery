@@ -18,6 +18,7 @@ import { useUserProfile } from '../state/UserProfileContext';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 import { SERIF_BOLD } from '../theme/typography';
+import { errorMessage } from '../utils/errorMessage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompleteProfile'> & {
   onDone?: () => void;
@@ -65,7 +66,7 @@ export function CompleteProfileScreen({ onDone }: Props) {
       onDone?.();
     } catch (err) {
       setFormError(
-        err instanceof Error ? err.message : "Couldn't save that. Check your connection and try again.",
+        errorMessage(err, "Couldn't save that. Check your connection and try again."),
       );
     } finally {
       setIsSaving(false);

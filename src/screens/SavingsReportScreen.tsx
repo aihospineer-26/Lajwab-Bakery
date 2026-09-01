@@ -9,6 +9,7 @@ import { RootStackParamList } from '../navigation/types';
 import { fetchOrders } from '../services/orders';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
+import { errorMessage } from '../utils/errorMessage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SavingsReport'>;
 
@@ -72,7 +73,7 @@ export function SavingsReportScreen({ navigation }: Props) {
     setError(null);
     fetchOrders()
       .then(setOrders)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load your orders'))
+      .catch((err) => setError(errorMessage(err, 'Failed to load your orders')))
       .finally(() => setIsLoading(false));
   }, []);
 

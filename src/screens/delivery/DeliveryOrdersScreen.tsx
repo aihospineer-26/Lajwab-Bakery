@@ -15,6 +15,7 @@ import { Order, OrderItem, OrderStatus, STATUS_LABEL } from '../../data/orders';
 import { fetchActiveOrders, fetchOrderItems, updateOrderStatus } from '../../services/orders';
 import { useTheme } from '../../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../../theme';
+import { errorMessage } from '../../utils/errorMessage';
 
 const ACCENT = '#F07A1C';
 
@@ -51,7 +52,7 @@ export function DeliveryOrdersScreen() {
     try {
       setOrders(await fetchActiveOrders());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load orders');
+      setError(errorMessage(err, 'Could not load orders'));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -79,7 +80,7 @@ export function DeliveryOrdersScreen() {
       await updateOrderStatus(order.id, next.to);
       await load('refresh');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update order');
+      setError(errorMessage(err, 'Could not update order'));
     } finally {
       setBusyId(null);
     }

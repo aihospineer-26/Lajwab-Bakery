@@ -32,6 +32,7 @@ import {
 import { useTheme } from '../../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../../theme';
 import { confirm } from '../../utils/confirm';
+import { errorMessage } from '../../utils/errorMessage';
 
 type QueueTab = 'live' | 'completed' | 'cancelled';
 
@@ -94,7 +95,7 @@ export function InventoryOrdersScreen() {
       setOrders(await fetchAllOrders());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load orders');
+      setError(errorMessage(err, 'Could not load orders'));
     } finally {
       if (mode === 'initial') setIsLoading(false);
     }
@@ -149,7 +150,7 @@ export function InventoryOrdersScreen() {
           prev.map((o) => (o.id === order.id ? { ...o, status: next.to } : o)),
         );
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'Could not update order');
+        setActionError(errorMessage(err, 'Could not update order'));
         await load('refresh');
       } finally {
         setBusyId(null);
@@ -181,7 +182,7 @@ export function InventoryOrdersScreen() {
           prev.map((o) => (o.id === order.id ? { ...o, paymentStatus: 'paid' as const } : o)),
         );
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'Could not confirm payment');
+        setActionError(errorMessage(err, 'Could not confirm payment'));
         await load('refresh');
       } finally {
         setBusyId(null);
@@ -208,7 +209,7 @@ export function InventoryOrdersScreen() {
           prev.map((o) => (o.id === order.id ? { ...o, status: 'cancelled' } : o)),
         );
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'Could not cancel order');
+        setActionError(errorMessage(err, 'Could not cancel order'));
         await load('refresh');
       } finally {
         setBusyId(null);

@@ -17,6 +17,7 @@ import { useTheme } from '../../state/ThemeContext';
 import { useUserProfile } from '../../state/UserProfileContext';
 import { fetchStoreSettings, saveStoreSettings } from '../../services/storeSettings';
 import { ColorPalette, radius, spacing } from '../../theme';
+import { errorMessage } from '../../utils/errorMessage';
 
 export function InventoryAccountScreen() {
   const { colors } = useTheme();
@@ -53,7 +54,7 @@ export function InventoryAccountScreen() {
       setLegalState('saved');
     } catch (err) {
       setLegalState('error');
-      setLegalError(err instanceof Error ? err.message : 'Could not save');
+      setLegalError(errorMessage(err, 'Could not save'));
     }
   };
 

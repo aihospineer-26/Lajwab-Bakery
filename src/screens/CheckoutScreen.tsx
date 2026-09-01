@@ -227,6 +227,12 @@ export function CheckoutScreen({ navigation }: Props) {
     }
     setError(null);
     setIsPlacing(true);
+
+    /* Everything that can legitimately fail the order lives in this block, and
+       nothing else does. Once place_order returns, the row exists and the
+       customer has ordered -- so no later step is allowed to reach setError and
+       claim otherwise. */
+    let newOrderId: string;
     try {
       const items = cartProducts.map(p => ({
         productId: p.id,
@@ -236,7 +242,7 @@ export function CheckoutScreen({ navigation }: Props) {
       }));
       const slot = slots.find(sl => sl.id === selectedSlot);
       if (requestIdRef.current === null) requestIdRef.current = newRequestId();
-      const newOrderId = await placeOrder(items, {
+      newOrderId = await placeOrder(items, {
         address: {
           label: address.label,
           line1: address.line1,
@@ -253,23 +259,53 @@ export function CheckoutScreen({ navigation }: Props) {
         couponCode: appliedCoupon?.code,
         discount,
       });
-      requestIdRef.current = null;
-      /* Written back so the Account screen greets them by the name they just
-         gave, and the next order arrives with the field already filled. */
+    } catch (err) {
+      /* The id is deliberately kept. A rejection means no row was written, so
+         reusing it simply places the order; a lost response means one may well
+         have been, and reusing it returns that order instead of a second one.
+         Minting a fresh id here is what would duplicate. */
+      setError(errorMessage(err, 'Could not place order. Please try again.'));
+      setIsPlacing(false);
+      return;
+    }
+
+    /* ---- The order exists from here on. Bookkeeping only. ---- */
+
+    /* Each of these is a convenience, and none is worth telling a customer
+       their order failed over. Written back so the Account screen greets them
+       by the name they just gave, and the next order arrives already filled. */
+    try {
       if (customerName.trim() !== profile.name.trim()) {
         updateProfile({ name: customerName.trim() });
       }
       await AsyncStorage.setItem(CONTACT_KEY, JSON.stringify({ name: customerName.trim() }));
-      await refetchProducts();
-      clearCart();
-      /* The id place_order returned, carried through so the confirmation screen
-         reads this order's real status instead of animating a made-up one. */
-      navigation.navigate('OrderConfirmation', { orderId: newOrderId });
-    } catch (err) {
-      setError(errorMessage(err, 'Could not place order. Please try again.'));
-    } finally {
-      setIsPlacing(false);
+    } catch {
+      /* The name just isn't remembered for next time. */
     }
+
+    try {
+      await refetchProducts();
+    } catch {
+      /* Stock counts stay stale until the next fetch. */
+    }
+
+    try {
+      clearCart();
+    } catch {
+      /* Cart still holds the ordered items. The request id below is still set,
+         so a second tap returns this same order rather than placing another. */
+    }
+
+    /* The id place_order returned, carried through so the confirmation screen
+       reads this order's real status instead of animating a made-up one. */
+    setIsPlacing(false);
+    navigation.navigate('OrderConfirmation', { orderId: newOrderId });
+
+    /* Cleared only once the handoff is done, so this checkout cannot be
+       replayed onto the order it just created -- and never before, because
+       every path that still holds it is idempotent and every path that has
+       lost it is not. */
+    requestIdRef.current = null;
   };
 
   return (

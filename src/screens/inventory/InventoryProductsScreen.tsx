@@ -31,6 +31,7 @@ import { useCatalog } from '../../state/CatalogContext';
 import { useTheme } from '../../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../../theme';
 import { confirm } from '../../utils/confirm';
+import { errorMessage } from '../../utils/errorMessage';
 
 type FormState = {
   name: string;
@@ -137,7 +138,7 @@ export function InventoryProductsScreen() {
       await deleteProduct(product.id);
       reload();
     } catch (err) {
-      setListError(err instanceof Error ? err.message : 'Could not delete product');
+      setListError(errorMessage(err, 'Could not delete product'));
     } finally {
       setDeletingId(null);
     }
@@ -371,7 +372,7 @@ function ProductFormModal({
       }
       onSaved();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Could not save product');
+      setSaveError(errorMessage(err, 'Could not save product'));
     } finally {
       setIsSaving(false);
     }

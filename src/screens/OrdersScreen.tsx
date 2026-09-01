@@ -17,6 +17,7 @@ import { fetchOrders } from '../services/orders';
 import { useTheme } from '../state/ThemeContext';
 import { ColorPalette, radius, spacing } from '../theme';
 import { SERIF_BOLD } from '../theme/typography';
+import { errorMessage } from '../utils/errorMessage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Orders'>;
 
@@ -49,7 +50,7 @@ export function OrdersScreen({ navigation }: Props) {
     setError(null);
     fetchOrders()
       .then(setOrders)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load orders'))
+      .catch((err) => setError(errorMessage(err, 'Failed to load orders')))
       .finally(() => {
         setIsLoading(false);
         setIsRefreshing(false);

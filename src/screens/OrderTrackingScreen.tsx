@@ -37,6 +37,7 @@ import { useTheme } from '../state/ThemeContext';
 import { confirm } from '../utils/confirm';
 import { ColorPalette, radius, spacing } from '../theme';
 import { SERIF_BOLD } from '../theme/typography';
+import { errorMessage } from '../utils/errorMessage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrderTracking'>;
 
@@ -124,7 +125,7 @@ export function OrderTrackingScreen({ navigation, route }: Props) {
       await cancelOrder(orderId);
       setOrderStatus('cancelled');
     } catch (err) {
-      setCancelError(err instanceof Error ? err.message : 'Could not cancel. Please try again.');
+      setCancelError(errorMessage(err, 'Could not cancel. Please try again.'));
     } finally {
       setIsCancelling(false);
     }
