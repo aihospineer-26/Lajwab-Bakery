@@ -18,23 +18,34 @@ const DENIED = Platform.OS === 'web'
 
 const UNAVAILABLE = 'Could not get a fix on your location. Check that location is on, or type your address below.';
 
-export async function getCurrentCoords(): Promise<{ lat: number; lng: number }> {
+async function requestAndFetchPosition() {
+  /* On web, expo-location's permission check makes its own untimed GPS fetch
+     as a side effect (that's how it tells granted from denied), before the
+     fetch below runs a second time -- so the deadline has to start here, not
+     after, or a slow/no-GPS browser can hang before we ever get a chance to
+     time it out. */
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') {
     throw new Error(DENIED);
   }
+  return Location.getCurrentPositionAsync({});
+}
 
+export async function getCurrentCoords(): Promise<{ lat: number; lng: number }> {
   /* A denied OS-level switch, or a device that simply cannot get a fix, fails
      here rather than above -- the browser reports the site as permitted and
      then never resolves a position. Without a deadline the button spins for as
      long as the platform feels like trying. */
   try {
     const position = await Promise.race([
-      Location.getCurrentPositionAsync({}),
+      requestAndFetchPosition(),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error(UNAVAILABLE)), 15000)),
     ]);
     return { lat: position.coords.latitude, lng: position.coords.longitude };
   } catch (err) {
+    if (err instanceof Error && (err.message === DENIED || err.message === UNAVAILABLE)) {
+      throw err;
+    }
     const message = err instanceof Error ? err.message : '';
     if (/denied|permission/i.test(message)) throw new Error(DENIED);
     throw new Error(UNAVAILABLE);
