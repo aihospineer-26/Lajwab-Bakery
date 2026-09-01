@@ -9,6 +9,18 @@ type MapPickerProps = {
   onChange: (lat: number, lng: number) => void;
 };
 
+/* Raw tile.openstreetmap.org is explicitly for evaluation only -- OSM's own
+ * usage policy asks production apps to use a dedicated provider. Falls back
+ * to it when no key is configured so local development needs no signup; see
+ * the same fallback in services/geocoding.ts. */
+const LOCATIONIQ_KEY = process.env.EXPO_PUBLIC_LOCATIONIQ_KEY?.trim() ?? '';
+const TILE_URL = LOCATIONIQ_KEY
+  ? `https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`
+  : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_ATTRIBUTION = LOCATIONIQ_KEY
+  ? '&copy; <a href="https://locationiq.com/attribution">LocationIQ</a> &copy; OpenStreetMap contributors'
+  : '&copy; OpenStreetMap contributors';
+
 function buildMapHtml(lat: number, lng: number): string {
   return `<!DOCTYPE html>
 <html>
@@ -24,8 +36,8 @@ function buildMapHtml(lat: number, lng: number): string {
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const map = L.map('map', { zoomControl: true }).setView([${lat}, ${lng}], 16);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+    L.tileLayer('${TILE_URL}', {
+      attribution: '${TILE_ATTRIBUTION}',
       maxZoom: 19,
     }).addTo(map);
 

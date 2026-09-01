@@ -56,6 +56,23 @@ export function AddressesScreen({ navigation }: Props) {
     }
   };
 
+  /* Fired on every drag/click, so it must never be allowed to throw or block
+     the pin from moving. Coordinates are the ground truth and are set first,
+     unconditionally; the text fields are best-effort and simply keep
+     whatever they last had if the lookup fails -- silently stale beats
+     silently wrong, and the pin itself is still exactly where it was moved. */
+  const handlePinMove = async (lat: number, lng: number) => {
+    setCoords({ lat, lng });
+    try {
+      const place = await reverseGeocode(lat, lng);
+      if (place.line1) setLine1(place.line1);
+      if (place.city) setCity(place.city);
+      if (place.pincode) setPincode(place.pincode);
+    } catch {
+      /* Address text stays as it was; the saved lat/lng is still correct. */
+    }
+  };
+
   const resetForm = () => {
     setLabel('');
     setLine1('');
@@ -159,7 +176,7 @@ export function AddressesScreen({ navigation }: Props) {
             <MapPicker
               lat={coords?.lat ?? FALLBACK_COORDS.lat}
               lng={coords?.lng ?? FALLBACK_COORDS.lng}
-              onChange={(lat, lng) => setCoords({ lat, lng })}
+              onChange={handlePinMove}
             />
             <Text style={styles.mapHint}>
               {coords

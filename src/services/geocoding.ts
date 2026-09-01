@@ -41,8 +41,22 @@ export async function getCurrentCoords(): Promise<{ lat: number; lng: number }> 
   }
 }
 
+/* LocationIQ's reverse endpoint is a hosted, rate-limited wrapper over the
+ * same OSM data Nominatim serves, and returns the identical response shape
+ * -- so the parsing below is unchanged either way.
+ *
+ * Falling back to Nominatim's raw public server when no key is configured
+ * keeps local development working without asking every contributor to sign
+ * up for a key, but that server explicitly asks not to be used for real
+ * traffic (1 req/sec, requires an identifying header we cannot reliably set
+ * from a mobile fetch). Set EXPO_PUBLIC_LOCATIONIQ_KEY before shipping.
+ */
+const LOCATIONIQ_KEY = process.env.EXPO_PUBLIC_LOCATIONIQ_KEY?.trim() ?? '';
+
 export async function reverseGeocode(lat: number, lng: number): Promise<GeocodedAddress> {
-  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+  const url = LOCATIONIQ_KEY
+    ? `https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_KEY}&lat=${lat}&lon=${lng}&format=json`
+    : `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
   const response = await fetch(url, {
     headers: { Accept: 'application/json' },
   });
