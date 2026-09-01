@@ -52,6 +52,12 @@
         "projectId": "47b33753-e8ba-42a5-88d2-fd21e2ef4a14"
       }
     },
-    "owner": "hospineer.tech"
+    "owner": "hospineer.tech",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/47b33753-e8ba-42a5-88d2-fd21e2ef4a14"
+    }
   }
 }
